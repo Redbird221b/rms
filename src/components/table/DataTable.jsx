@@ -88,6 +88,7 @@ export default function DataTable({
   }, [columns, data, sort])
 
   const rowPadding = density === 'compact' ? 'py-2' : 'py-3.5'
+  const renderCell = (column, row) => (column.render ? column.render(row) : row[column.key])
 
   return (
     <div className="panel overflow-hidden">
@@ -155,7 +156,64 @@ export default function DataTable({
       </div>
 
       {sortedData.length ? (
-        <div className="overflow-x-auto">
+        <>
+          <div className="space-y-3 p-3 md:hidden">
+            {sortedData.map((row) => {
+              const primaryColumn =
+                activeColumns.find((column) => column.key === 'title') ??
+                activeColumns.find((column) => column.key === 'id') ??
+                activeColumns[0]
+
+              return (
+                <div
+                  key={row[rowKey]}
+                  className={clsx(
+                    'rounded-2xl border border-[#D9D9D9] bg-white p-4 dark:border-[#2F4878] dark:bg-[#10203D]/72',
+                    onRowClick ? 'cursor-pointer transition-colors hover:bg-[#F8FAFF] dark:hover:bg-[#17305A]' : '',
+                  )}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            onRowClick(row)
+                          }
+                        }
+                      : undefined
+                  }
+                  role={onRowClick ? 'button' : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      {primaryColumn?.label}
+                    </div>
+                    <div className="mt-2 min-w-0 text-sm text-slate-700 dark:text-slate-200">
+                      {primaryColumn ? renderCell(primaryColumn, row) : row[rowKey]}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {activeColumns
+                      .filter((column) => column.key !== primaryColumn?.key)
+                      .map((column) => (
+                        <div key={`${row[rowKey]}-${column.key}`} className="grid gap-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                            {column.label}
+                          </div>
+                          <div className="text-sm text-slate-700 dark:text-slate-200">
+                            {renderCell(column, row)}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full">
             <thead className="bg-[#F6F8FC] dark:bg-[#0F1E3A]">
               <tr>
@@ -209,14 +267,15 @@ export default function DataTable({
                         column.align === 'right' ? 'text-right' : 'text-left',
                       )}
                     >
-                      {column.render ? column.render(row) : row[column.key]}
+                      {renderCell(column, row)}
                     </td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       ) : (
         <div className="p-5">{emptyState}</div>
       )}

@@ -8,7 +8,7 @@ export default function GlobalFilterBar() {
 
   return (
     <section className="panel mb-4 p-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
         <label className="space-y-1">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('filters.dateFrom')}</span>
           <input

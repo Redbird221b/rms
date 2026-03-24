@@ -7,6 +7,8 @@ import {
   statuses,
   users,
 } from '../../data/seed'
+import { useAuth } from './AuthContext'
+import { canViewRisk } from '../../lib/access'
 import { applyGlobalRiskFilters, recalculateRisk } from '../../lib/compute'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
 
@@ -94,6 +96,7 @@ function createAuditEvent(event = {}) {
 }
 
 export function ErmProvider({ children }) {
+  const { currentUser } = useAuth()
   const [risks, setRisks] = useState(() =>
     initList(STORAGE_KEYS.risks, seedData.risks).map(recalculateRisk),
   )
@@ -109,6 +112,7 @@ export function ErmProvider({ children }) {
   const [theme, setTheme] = useState(() => loadFromStorage(STORAGE_KEYS.theme, 'light'))
   const [toasts, setToasts] = useState([])
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [sidebarSide, setSidebarSide] = useState('left')
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.risks, risks)
@@ -185,9 +189,12 @@ export function ErmProvider({ children }) {
   }
 
   const addRisk = (newRisk) => {
+    const createdBy = currentUser?.name ?? newRisk.owner ?? 'System'
     const createdAt = new Date().toISOString()
     const baseRisk = {
       ...newRisk,
+      createdByUserId: currentUser?.id ?? newRisk.createdByUserId ?? null,
+      createdByDepartmentId: currentUser?.department ?? newRisk.department,
       createdAt,
       updatedAt: createdAt,
       lastReviewedAt: newRisk.lastReviewedAt ?? createdAt,
@@ -195,7 +202,7 @@ export function ErmProvider({ children }) {
         createAuditEvent({
           title: 'Risk created',
           type: 'create',
-          by: newRisk.owner,
+          by: createdBy,
           notes: `Status set to ${newRisk.status}`,
           at: createdAt,
         }),
@@ -221,7 +228,13 @@ export function ErmProvider({ children }) {
         }
         return {
           ...merged,
-          audit: [createAuditEvent(auditEvent), ...(risk.audit ?? [])],
+          audit: [
+            createAuditEvent({
+              by: auditEvent.by ?? currentUser?.name ?? 'System',
+              ...auditEvent,
+            }),
+            ...(risk.audit ?? []),
+          ],
         }
       }),
     )
@@ -231,6 +244,7 @@ export function ErmProvider({ children }) {
     const nextEntry = {
       id: entry.id ?? `DEC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       decidedAt: entry.decidedAt ?? new Date().toISOString(),
+      decidedBy: entry.decidedBy ?? currentUser?.name ?? 'System',
       ...entry,
     }
     setDecisionLogs((current) => [nextEntry, ...current])
@@ -258,13 +272,22 @@ export function ErmProvider({ children }) {
     )
   }
 
+  const scopedRisks = useMemo(() => {
+    if (!currentUser) {
+      return []
+    }
+    return risks.filter((risk) => canViewRisk(currentUser, risk, users))
+  }, [currentUser, risks])
+
   const filteredRisks = useMemo(
-    () => applyGlobalRiskFilters(risks, globalFilters),
-    [risks, globalFilters],
+    () => applyGlobalRiskFilters(scopedRisks, globalFilters),
+    [globalFilters, scopedRisks],
   )
 
   const value = {
+    currentUser,
     risks,
+    scopedRisks,
     filteredRisks,
     mitigationActions,
     decisionLogs,
@@ -272,6 +295,7 @@ export function ErmProvider({ children }) {
     theme,
     toasts,
     isSidebarOpen,
+    sidebarSide,
     departments,
     categories,
     statuses,
@@ -288,6 +312,10 @@ export function ErmProvider({ children }) {
     dismissToast,
     setTheme,
     setIsSidebarOpen,
+    openSidebar: (side = 'left') => {
+      setSidebarSide(side)
+      setIsSidebarOpen(true)
+    },
   }
 
   return <ErmContext.Provider value={value}>{children}</ErmContext.Provider>

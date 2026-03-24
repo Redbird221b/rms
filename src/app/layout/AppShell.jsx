@@ -7,14 +7,17 @@ import Topbar from './Topbar'
 
 export default function AppShell() {
   const location = useLocation()
-  const { setIsSidebarOpen } = useErm()
+  const { isSidebarOpen, openSidebar } = useErm()
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] text-slate-900 antialiased transition-colors dark:bg-[#0D162A] dark:text-slate-100">
       <Sidebar />
-      <div className="lg:pl-64">
-        <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="mx-auto max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8">
+      <div>
+        <Topbar onMenuClick={() => openSidebar('left')} />
+        <main
+          aria-hidden={isSidebarOpen}
+          className="mx-auto max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8"
+        >
           <GlobalFilterBar />
           <AnimatePresence mode="wait">
             <motion.div

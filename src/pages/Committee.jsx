@@ -127,7 +127,7 @@ export default function Committee() {
       />
 
       <section className="panel p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('committee.agenda')}</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 dark:text-slate-400">{t('committee.decisionType')}</span>
@@ -151,18 +151,18 @@ export default function Committee() {
               className="rounded-lg border border-slate-200 bg-white p-3 dark:border-[#2F4878] dark:bg-[#10203D]/70"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{risk.title}</p>
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-slate-900 dark:text-slate-100">{risk.title}</p>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                     {risk.id} · {risk.reason}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                   <SeverityBadge severity={risk.severity} />
                   <StatusChip status={risk.status} />
                 </div>
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span>{tr('department', risk.department)}</span>
                 <span>{formatCurrency(risk.expectedLoss)}</span>
               </div>
@@ -177,7 +177,7 @@ export default function Committee() {
       </section>
 
       <section>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('committee.log')}</h2>
           <select
             className="input-field !w-52 !py-1.5"

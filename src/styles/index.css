@@ -73,7 +73,7 @@
   .input-field {
     border-color: var(--brand-gray-300);
     background-color: #f7f8fb;
-    @apply w-full rounded-lg border px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:ring-2;
+    @apply w-full rounded-xl border px-3 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:ring-2;
     --tw-ring-color: rgba(0, 65, 182, 0.2);
   }
 
@@ -98,7 +98,7 @@
 
   .btn-primary {
     background-color: var(--brand-blue);
-    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply inline-flex min-h-11 items-center justify-center rounded-xl px-3.5 py-2.5 text-sm font-medium text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
     outline-color: var(--brand-blue);
   }
 
@@ -110,7 +110,7 @@
     border-color: var(--brand-gray-300);
     background-color: #ffffff;
     color: var(--brand-blue);
-    @apply inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply inline-flex min-h-11 items-center justify-center rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
     outline-color: var(--brand-blue);
   }
 
@@ -129,5 +129,31 @@
     border-color: var(--brand-dark-border-strong);
     background-color: #1a2f59;
     color: #ffffff;
+  }
+
+  .scroll-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 65, 182, 0.45) transparent;
+  }
+
+  .scroll-panel::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scroll-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-panel::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(0, 65, 182, 0.34);
+  }
+
+  .dark .scroll-panel {
+    scrollbar-color: rgba(151, 180, 244, 0.45) transparent;
+  }
+
+  .dark .scroll-panel::-webkit-scrollbar-thumb {
+    background: rgba(151, 180, 244, 0.38);
   }
 }

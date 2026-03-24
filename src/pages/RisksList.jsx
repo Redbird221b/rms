@@ -98,7 +98,7 @@ export default function RisksList() {
       />
 
       <section className="panel p-3">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="space-y-1">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('risks.category')}</span>
             <select

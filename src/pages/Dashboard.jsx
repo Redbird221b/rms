@@ -147,7 +147,7 @@ export default function Dashboard() {
                       key={action.id}
                       className="rounded-lg border border-slate-200 px-3 py-2 dark:border-[#2F4878]"
                     >
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{action.title}</p>
+                      <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{action.title}</p>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                         {action.riskId} · {t('dashboard.due')} {action.dueDate}
                       </p>
@@ -168,7 +168,7 @@ export default function Dashboard() {
                       className="rounded-lg border border-slate-200 px-3 py-2 dark:border-[#2F4878]"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{tr('decisionType', entry.decisionType)}</p>
+                        <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{tr('decisionType', entry.decisionType)}</p>
                         <span className="text-xs text-slate-500 dark:text-slate-400">{entry.riskId}</span>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -193,11 +193,11 @@ export default function Dashboard() {
                 className="block rounded-lg border border-slate-200 px-3 py-2 transition-colors hover:bg-slate-50 dark:border-[#2F4878] dark:hover:bg-[#1A2F59]/70"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{risk.title}</p>
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{risk.title}</p>
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{tr('department', risk.department)}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {formatCompactCurrency(risk.expectedLoss)}
                     </p>

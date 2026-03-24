@@ -7,11 +7,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useErm } from '../../app/context/ErmContext'
 import { formatCompactCurrency, formatCurrency } from '../../lib/format'
 import { useI18n } from '../../app/context/I18nContext'
+import EnterpriseTooltip from './EnterpriseTooltip'
 
 export default function ExpectedLossTrendChart({ data }) {
   const { t } = useI18n()
+  const { theme } = useErm()
+  const isDark = theme === 'dark'
 
   return (
     <div className="panel p-4">
@@ -19,26 +23,39 @@ export default function ExpectedLossTrendChart({ data }) {
       <div className="mt-3 h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ left: 6, right: 12, top: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D9D9D9" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={isDark ? '#2A416D' : '#D9D9D9'}
+              vertical={false}
+            />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 12, fill: isDark ? '#9EB4E2' : '#6b7280' }}
+            />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
+              tick={{ fontSize: 12, fill: isDark ? '#9EB4E2' : '#6b7280' }}
               tickFormatter={formatCompactCurrency}
               width={84}
             />
             <Tooltip
-              formatter={(value) => formatCurrency(value)}
-              contentStyle={{
-                borderRadius: '0.65rem',
-                border: '1px solid #D9D9D9',
-                backgroundColor: '#ffffff',
-              }}
+              cursor={false}
+              content={
+                <EnterpriseTooltip
+                  isDark={isDark}
+                  labelFormatter={(value) => value}
+                  valueFormatter={(value) => formatCurrency(value)}
+                  valueLabel="Expected loss"
+                />
+              }
             />
             <Line
               type="monotone"
               dataKey="expectedLoss"
+              name="Expected loss"
               stroke="#DB4300"
               strokeWidth={2}
               dot={false}
