@@ -22,6 +22,15 @@ export const departments = [
 
 export const statuses = [
   'Draft',
+  'Under Risk Review',
+  'Info Requested by Risk Manager',
+  'Rejected by Risk Manager',
+  'Committee Review 1',
+  'Info Requested by Committee',
+  'Accepted for Mitigation',
+  'Committee Review 2',
+  'Additional Mitigation Required',
+  'Risk Accepted',
   'Pending Review',
   'Requested Info',
   'Approved',
@@ -31,7 +40,7 @@ export const statuses = [
   'Rejected',
 ]
 
-export const queueStatuses = ['Pending Review', 'Requested Info']
+export const queueStatuses = ['Under Risk Review', 'Pending Review']
 
 export const users = [
   {
@@ -1128,13 +1137,25 @@ const riskCreatorsByDepartment = {
   'Corporate Banking': 'USR-020',
   'IT & Security': 'USR-018',
   Compliance: 'USR-004',
-  Operations: 'USR-015',
+  Operations: 'USR-016',
   'Human Resources': 'USR-009',
   Procurement: 'USR-006',
 }
 
-export const demoAccounts = ['USR-013', 'USR-014', 'USR-011', 'USR-016', 'USR-015', 'USR-017']
-  .map((id) => users.find((user) => user.id === id))
+const demoAccountBlueprints = [
+  { id: 'USR-017', demoFocusKey: 'auth.demoFocus.creator' },
+  { id: 'USR-014', demoFocusKey: 'auth.demoFocus.riskManager' },
+  { id: 'USR-011', demoFocusKey: 'auth.demoFocus.committee' },
+  { id: 'USR-016', demoFocusKey: 'auth.demoFocus.director' },
+  { id: 'USR-015', demoFocusKey: 'auth.demoFocus.executor' },
+  { id: 'USR-013', demoFocusKey: 'auth.demoFocus.admin' },
+]
+
+export const demoAccounts = demoAccountBlueprints
+  .map(({ id, ...meta }) => {
+    const user = users.find((entry) => entry.id === id)
+    return user ? { ...user, ...meta } : null
+  })
   .filter(Boolean)
 
 export const risks = riskSeed.map((risk) =>

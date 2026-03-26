@@ -8,7 +8,9 @@ export default function ActionModal({
   description,
   confirmLabel,
   requireComment = false,
+  confirmDisabled = false,
   initialComment = '',
+  children,
   onClose,
   onConfirm,
 }) {
@@ -40,7 +42,10 @@ export default function ActionModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose, open])
 
-  const confirmDisabled = useMemo(() => requireComment && !comment.trim(), [comment, requireComment])
+  const isConfirmDisabled = useMemo(
+    () => confirmDisabled || (requireComment && !comment.trim()),
+    [comment, confirmDisabled, requireComment],
+  )
 
   const handleSubmit = () => {
     if (requireComment && !comment.trim()) {
@@ -78,6 +83,7 @@ export default function ActionModal({
             <div className="w-full max-w-lg rounded-xl border border-[#D9D9D9] bg-white p-4 shadow-lg dark:border-[#2F4878] dark:bg-[#13264A]">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
               {description ? <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
+              {children ? <div className="mt-4">{children}</div> : null}
               <label className="mt-4 block space-y-1">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {requireComment ? t('modal.commentRequiredLabel') : t('modal.commentOptional')}
@@ -95,7 +101,7 @@ export default function ActionModal({
                 <button type="button" className="btn-secondary" onClick={onClose}>
                   {t('common.cancel')}
                 </button>
-                <button type="button" className="btn-primary" onClick={handleSubmit} disabled={confirmDisabled}>
+                <button type="button" className="btn-primary" onClick={handleSubmit} disabled={isConfirmDisabled}>
                   {confirmLabel || t('common.save')}
                 </button>
               </div>

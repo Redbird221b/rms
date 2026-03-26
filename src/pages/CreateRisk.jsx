@@ -8,21 +8,28 @@ import { useErm } from '../app/context/ErmContext'
 export default function CreateRisk() {
   const navigate = useNavigate()
   const { t } = useI18n()
-  const { categories, departments, users, addRisk, addToast } = useErm()
+  const { categories, departments, addRisk, addToast } = useErm()
   const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (payload) => {
+  const handleSubmit = async (payload) => {
     setSubmitting(true)
-    addRisk(payload)
-    addToast({
-      type: 'success',
-      title: t('create.toast.created'),
-      message: t('create.toast.createdMsg', { riskId: payload.id }),
-    })
-    setTimeout(() => {
+    try {
+      const createdRisk = await addRisk(payload)
+      addToast({
+        type: 'success',
+        title: t('create.toast.created'),
+        message: t('create.toast.createdMsg', { riskId: createdRisk?.id ?? 'N/A' }),
+      })
+      navigate(createdRisk?.id ? `/risks/${createdRisk.id}` : '/risks')
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Unable to create risk',
+        message: error.message,
+      })
+    } finally {
       setSubmitting(false)
-      navigate('/risks')
-    }, 120)
+    }
   }
 
   return (
@@ -34,7 +41,6 @@ export default function CreateRisk() {
       <RiskForm
         categories={categories}
         departments={departments}
-        users={users}
         onSubmit={handleSubmit}
         submitting={submitting}
       />

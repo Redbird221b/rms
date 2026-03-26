@@ -8,6 +8,7 @@ import PageHeader from '../components/common/PageHeader'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
 import DataTable from '../components/table/DataTable'
+import { impactLevels } from '../lib/compute'
 import { formatCurrency, formatDate } from '../lib/format'
 
 export default function RisksList() {
@@ -122,10 +123,11 @@ export default function RisksList() {
               onChange={(event) => setLocalFilters((current) => ({ ...current, severity: event.target.value }))}
             >
               <option value="All">{t('common.all')}</option>
-              <option value="Low">{tr('severity', 'Low')}</option>
-              <option value="Medium">{tr('severity', 'Medium')}</option>
-              <option value="High">{tr('severity', 'High')}</option>
-              <option value="Critical">{tr('severity', 'Critical')}</option>
+              {impactLevels.map((level) => (
+                <option key={level} value={level}>
+                  {tr('severity', level)}
+                </option>
+              ))}
             </select>
           </label>
           <div className="flex items-end">

@@ -6,6 +6,7 @@ import Admin from '../pages/Admin'
 import Committee from '../pages/Committee'
 import CreateRisk from '../pages/CreateRisk'
 import Dashboard from '../pages/Dashboard'
+import EditRisk from '../pages/EditRisk'
 import Login from '../pages/Login'
 import RiskDetails from '../pages/RiskDetails'
 import RisksList from '../pages/RisksList'
@@ -78,6 +79,14 @@ export const router = createBrowserRouter([
         element: (
           <PermissionGate permission={PERMISSIONS.VIEW_RISKS}>
             <RiskDetails />
+          </PermissionGate>
+        ),
+      },
+      {
+        path: 'risks/:id/edit',
+        element: (
+          <PermissionGate permission={PERMISSIONS.VIEW_RISKS}>
+            <EditRisk />
           </PermissionGate>
         ),
       },

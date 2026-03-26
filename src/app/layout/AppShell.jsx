@@ -8,6 +8,7 @@ import Topbar from './Topbar'
 export default function AppShell() {
   const location = useLocation()
   const { isSidebarOpen, openSidebar } = useErm()
+  const showGlobalFilters = ['/dashboard', '/risks', '/queue'].includes(location.pathname)
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] text-slate-900 antialiased transition-colors dark:bg-[#0D162A] dark:text-slate-100">
@@ -18,7 +19,7 @@ export default function AppShell() {
           aria-hidden={isSidebarOpen}
           className="mx-auto max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8"
         >
-          <GlobalFilterBar />
+          {showGlobalFilters ? <GlobalFilterBar /> : null}
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -1,6 +1,24 @@
+import { sameDepartment } from './departments'
+
 const safeNumber = (value) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+export const probabilityLevels = ['Low', 'Medium', 'High']
+export const impactLevels = ['Small', 'Medium', 'Strong', 'Critical']
+
+const probabilityLevelToValue = {
+  Low: 0.2,
+  Medium: 0.5,
+  High: 0.8,
+}
+
+const legacySeverityToImpact = {
+  Low: 'Small',
+  Medium: 'Medium',
+  High: 'Strong',
+  Critical: 'Critical',
 }
 
 export const severityThresholds = [
@@ -10,20 +28,34 @@ export const severityThresholds = [
   { label: 'Critical', min: 5_000_000_000, max: Number.POSITIVE_INFINITY },
 ]
 
-const impactBands = [
-  { band: 1, min: 0, max: 1_000_000_000 },
-  { band: 2, min: 1_000_000_000, max: 2_500_000_000 },
-  { band: 3, min: 2_500_000_000, max: 6_000_000_000 },
-  { band: 4, min: 6_000_000_000, max: 10_000_000_000 },
-  { band: 5, min: 10_000_000_000, max: Number.POSITIVE_INFINITY },
-]
+const impactBands = {
+  Small: 1,
+  Medium: 2,
+  Strong: 3,
+  Critical: 4,
+}
+
+function normalizeProbabilityValue(probability) {
+  if (typeof probability === 'string' && probabilityLevels.includes(probability)) {
+    return probabilityLevelToValue[probability]
+  }
+  const parsed = Number(probability)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0
+  }
+  return Math.min(0.99, Math.max(0.01, parsed))
+}
 
 export function clampProbability(probability) {
-  return Math.min(0.99, Math.max(0.01, safeNumber(probability)))
+  return normalizeProbabilityValue(probability)
 }
 
 export function calculateExpectedLoss(probability, impactMostLikely) {
-  return clampProbability(probability) * safeNumber(impactMostLikely)
+  const normalizedProbability = clampProbability(probability)
+  if (!normalizedProbability) {
+    return 0
+  }
+  return normalizedProbability * safeNumber(impactMostLikely)
 }
 
 export function getSeverityByLoss(expectedLoss) {
@@ -32,12 +64,53 @@ export function getSeverityByLoss(expectedLoss) {
   )?.label
 }
 
-export function getImpactBand(impactMostLikely) {
-  return impactBands.find((band) => impactMostLikely >= band.min && impactMostLikely < band.max)?.band ?? 1
+export function getProbabilityLevel(probability) {
+  if (typeof probability === 'string' && probabilityLevels.includes(probability)) {
+    return probability
+  }
+
+  const normalizedProbability = clampProbability(probability)
+  if (!normalizedProbability) {
+    return ''
+  }
+  if (normalizedProbability <= 0.34) {
+    return 'Low'
+  }
+  if (normalizedProbability <= 0.67) {
+    return 'Medium'
+  }
+  return 'High'
+}
+
+export function getImpactLevel(value, impactMostLikely = 0) {
+  if (typeof value === 'string') {
+    if (impactLevels.includes(value)) {
+      return value
+    }
+    if (legacySeverityToImpact[value]) {
+      return legacySeverityToImpact[value]
+    }
+  }
+  return ''
+}
+
+export function getImpactBand(level, impactMostLikely = 0) {
+  const impactLevel = getImpactLevel(level, impactMostLikely)
+  return impactBands[impactLevel] ?? 1
 }
 
 export function getProbabilityBand(probability) {
-  return Math.max(1, Math.min(5, Math.ceil(clampProbability(probability) * 5)))
+  const level = getProbabilityLevel(probability)
+  if (level === 'Low') {
+    return 1
+  }
+  if (level === 'Medium') {
+    return 2
+  }
+  if (level === 'High') {
+    return 3
+  }
+  return 1
 }
 
 export function isOverdue(risk) {
@@ -50,22 +123,25 @@ export function isOverdue(risk) {
 }
 
 export function recalculateRisk(risk) {
-  const expectedLoss = calculateExpectedLoss(risk.probability, risk.impactMostLikely)
-  const inherentScore = getProbabilityBand(risk.probability) * getImpactBand(risk.impactMostLikely)
-  const residualScore = risk.residualScore
-    ? Math.max(1, Math.min(25, safeNumber(risk.residualScore)))
-    : Math.max(1, inherentScore - 3)
+  const probability = clampProbability(risk.probability)
+  const impactMostLikely = safeNumber(risk.impactMostLikely)
+  const severity = getImpactLevel(risk.severity, impactMostLikely)
+  const expectedLoss = calculateExpectedLoss(probability, impactMostLikely)
+  const inherentScore =
+    probability && severity
+      ? getProbabilityBand(probability) * getImpactBand(severity)
+      : 0
 
   return {
     ...risk,
-    probability: clampProbability(risk.probability),
-    impactMin: safeNumber(risk.impactMin),
-    impactMostLikely: safeNumber(risk.impactMostLikely),
-    impactMax: safeNumber(risk.impactMax),
+    probability,
+    impactMin: 0,
+    impactMostLikely,
+    impactMax: 0,
     expectedLoss,
     inherentScore,
-    residualScore,
-    severity: getSeverityByLoss(expectedLoss),
+    residualScore: 0,
+    severity,
   }
 }
 
@@ -108,7 +184,11 @@ export function applyGlobalRiskFilters(risks, filters) {
     const fromTs = parseDateStart(filters.dateFrom)
     const toTs = parseDateEnd(filters.dateTo)
 
-    if (filters.department !== 'All' && risk.department !== filters.department) {
+    if (
+      filters.department !== 'All' &&
+      !sameDepartment(risk.department, filters.department) &&
+      !sameDepartment(risk.mitigationDepartment, filters.department)
+    ) {
       return false
     }
     if (filters.status !== 'All' && risk.status !== filters.status) {

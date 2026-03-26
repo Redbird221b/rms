@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../app/context/I18nContext'
 import { recalculateRisk } from '../../lib/compute'
 
-const initialState = {
+const baseState = {
   title: '',
   description: '',
-  category: 'Operational',
-  department: 'Treasury',
+  category: '',
+  department: '',
   owner: '',
   responsible: '',
   status: 'Draft',
@@ -15,18 +15,69 @@ const initialState = {
   impactMostLikely: 0,
   impactMax: 0,
   residualScore: 0,
-  dueDate: '',
   tags: '',
   existingControlsText: '',
   plannedControlsText: '',
 }
 
-export default function RiskForm({ categories, departments, users, onSubmit, submitting }) {
+function normalizeInitialValues(initialValues, categories, departments) {
+  if (!initialValues) {
+    return {
+      ...baseState,
+      category: categories[0] ?? '',
+      department: departments[0] ?? '',
+    }
+  }
+
+  return {
+    ...baseState,
+    ...initialValues,
+    category: initialValues.category || categories[0] || '',
+    department: initialValues.department || departments[0] || '',
+    status: initialValues.status || 'Draft',
+    tags: Array.isArray(initialValues.tags) ? initialValues.tags.join(', ') : initialValues.tags || '',
+  }
+}
+
+export default function RiskForm({
+  categories,
+  departments,
+  onSubmit,
+  submitting,
+  initialValues = null,
+  submitLabel,
+  submittingLabel,
+  resetOnSuccess = true,
+}) {
   const { t, tr } = useI18n()
-  const [form, setForm] = useState(initialState)
+  const resetSnapshot = useMemo(
+    () => normalizeInitialValues(initialValues, categories, departments),
+    [initialValues, categories, departments],
+  )
+  const [form, setForm] = useState(() => resetSnapshot)
   const [errors, setErrors] = useState({})
-  const uniqueRoles = Array.from(new Set(users.map((user) => user.role)))
-  const uniqueUsers = Array.from(new Set(users.map((user) => user.name)))
+
+  useEffect(() => {
+    setForm(normalizeInitialValues(initialValues, categories, departments))
+    setErrors({})
+  }, [initialValues])
+
+  useEffect(() => {
+    setForm((current) => {
+      const nextCategory = categories.includes(current.category) ? current.category : (categories[0] ?? '')
+      const nextDepartment = departments.includes(current.department) ? current.department : (departments[0] ?? '')
+
+      if (current.category === nextCategory && current.department === nextDepartment) {
+        return current
+      }
+
+      return {
+        ...current,
+        category: nextCategory,
+        department: nextDepartment,
+      }
+    })
+  }, [categories, departments])
 
   const setField = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -36,13 +87,12 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
     const nextErrors = {}
     if (!form.title.trim()) nextErrors.title = t('form.validation.title')
     if (!form.description.trim()) nextErrors.description = t('form.validation.description')
-    if (!form.owner) nextErrors.owner = t('form.validation.owner')
-    if (!form.responsible) nextErrors.responsible = t('form.validation.responsible')
-    if (!form.dueDate) nextErrors.dueDate = t('form.validation.dueDate')
+    if (!form.category) nextErrors.category = t('form.validation.category')
+    if (!form.department) nextErrors.department = t('form.validation.department')
     return nextErrors
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     const validationErrors = validate()
     setErrors(validationErrors)
@@ -50,9 +100,7 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
       return
     }
 
-    const riskId = `RISK-${String(Math.floor(Math.random() * 9000) + 1000)}`
     const payload = recalculateRisk({
-      id: riskId,
       ...form,
       tags: form.tags
         .split(',')
@@ -60,24 +108,29 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
         .filter(Boolean),
       attachments: [],
       financialAssessmentStatus: 'Pending Assessment',
-      committee: {
-        lastDecision: form.status === 'Pending Review' ? 'Request Info' : 'Drafted',
-        lastDecisionAt: new Date().toISOString(),
-      },
     })
-    onSubmit(payload)
-    setForm(initialState)
-    setErrors({})
+
+    await onSubmit(payload)
+
+    if (resetOnSuccess) {
+      setForm(normalizeInitialValues(null, categories, departments))
+      setErrors({})
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <div className="panel p-4">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('form.riskInformation')}
           </h2>
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {!categories.length || !departments.length ? (
+              <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                {t('form.referenceSetupHint')}
+              </div>
+            ) : null}
             <label className="md:col-span-2">
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
                 {t('form.title')}
@@ -109,13 +162,16 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
                 className="input-field"
                 value={form.category}
                 onChange={(event) => setField('category', event.target.value)}
+                disabled={!categories.length}
               >
+                <option value="">{t('form.selectCategory')}</option>
                 {categories.map((category) => (
                   <option key={category} value={category}>
                     {tr('category', category)}
                   </option>
                 ))}
               </select>
+              {errors.category ? <span className="mt-1 block text-xs text-rose-600">{errors.category}</span> : null}
             </label>
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -125,49 +181,16 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
                 className="input-field"
                 value={form.department}
                 onChange={(event) => setField('department', event.target.value)}
+                disabled={!departments.length}
               >
+                <option value="">{t('form.selectDepartment')}</option>
                 {departments.map((department) => (
                   <option key={department} value={department}>
                     {tr('department', department)}
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                {t('form.ownerRole')}
-              </span>
-              <select
-                className="input-field"
-                value={form.owner}
-                onChange={(event) => setField('owner', event.target.value)}
-              >
-                <option value="">{t('form.selectOwner')}</option>
-                {uniqueRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-              {errors.owner ? <span className="mt-1 block text-xs text-rose-600">{errors.owner}</span> : null}
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                {t('form.responsible')}
-              </span>
-              <select
-                className="input-field"
-                value={form.responsible}
-                onChange={(event) => setField('responsible', event.target.value)}
-              >
-                <option value="">{t('form.selectResponsible')}</option>
-                {uniqueUsers.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              {errors.responsible ? <span className="mt-1 block text-xs text-rose-600">{errors.responsible}</span> : null}
+              {errors.department ? <span className="mt-1 block text-xs text-rose-600">{errors.department}</span> : null}
             </label>
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -179,20 +202,8 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
                 onChange={(event) => setField('status', event.target.value)}
               >
                 <option value="Draft">{tr('status', 'Draft')}</option>
-                <option value="Pending Review">{tr('status', 'Pending Review')}</option>
+                <option value="Under Risk Review">{tr('status', 'Under Risk Review')}</option>
               </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                {t('form.dueDate')}
-              </span>
-              <input
-                type="date"
-                className="input-field"
-                value={form.dueDate}
-                onChange={(event) => setField('dueDate', event.target.value)}
-              />
-              {errors.dueDate ? <span className="mt-1 block text-xs text-rose-600">{errors.dueDate}</span> : null}
             </label>
             <label className="md:col-span-2">
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -262,11 +273,18 @@ export default function RiskForm({ categories, departments, users, onSubmit, sub
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={() => setForm(initialState)}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setForm(resetSnapshot)
+                setErrors({})
+              }}
+            >
               {t('common.reset')}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? t('form.creating') : t('form.create')}
+              {submitting ? submittingLabel || t('form.creating') : submitLabel || t('form.create')}
             </button>
           </div>
         </div>

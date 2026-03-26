@@ -16,6 +16,9 @@ const messages = {
     'top.allDepartments': 'All Departments',
     'top.allStatuses': 'All Statuses',
     'top.notifications': 'Notifications',
+    'top.notificationsHelper': 'Workflow updates addressed to you',
+    'top.markAllRead': 'Mark all as read',
+    'top.notificationsEmpty': 'No notifications yet',
     'top.riskManager': 'Risk Manager',
     'top.language': 'Language',
     'top.openNavigation': 'Open navigation',
@@ -84,7 +87,7 @@ const messages = {
     'queue.actions.requestInfo': 'Request Info',
     'queue.actions.assign': 'Assign',
     'queue.modal.approveTitle': 'Approve Risk',
-    'queue.modal.approveDesc': 'Add optional context for approval.',
+    'queue.modal.approveDesc': 'A comment is required to record the approval decision.',
     'queue.modal.rejectTitle': 'Reject Risk',
     'queue.modal.rejectDesc': 'A rejection comment is required for audit and owner follow-up.',
     'queue.modal.requestInfoTitle': 'Request Information',
@@ -245,6 +248,9 @@ const messages = {
     'top.allDepartments': 'Все подразделения',
     'top.allStatuses': 'Все статусы',
     'top.notifications': 'Уведомления',
+    'top.notificationsHelper': 'Обновления workflow, адресованные вам',
+    'top.markAllRead': 'Отметить все как прочитанные',
+    'top.notificationsEmpty': 'Пока уведомлений нет',
     'top.riskManager': 'Риск-менеджер',
     'top.language': 'Язык',
     'top.openNavigation': 'Открыть навигацию',
@@ -303,7 +309,7 @@ const messages = {
     'queue.actions.requestInfo': 'Запросить данные',
     'queue.actions.assign': 'Назначить',
     'queue.modal.approveTitle': 'Одобрить риск',
-    'queue.modal.approveDesc': 'При необходимости добавьте комментарий к одобрению.',
+    'queue.modal.approveDesc': 'Для одобрения необходимо оставить комментарий с обоснованием.',
     'queue.modal.rejectTitle': 'Отклонить риск',
     'queue.modal.rejectDesc': 'Для отклонения обязателен комментарий для аудита.',
     'queue.modal.requestInfoTitle': 'Запросить информацию',
@@ -428,6 +434,9 @@ const messages = {
     'top.allDepartments': "Barcha bo'limlar",
     'top.allStatuses': 'Barcha statuslar',
     'top.notifications': 'Bildirishnomalar',
+    'top.notificationsHelper': 'Sizga yuborilgan workflow yangilanishlari',
+    'top.markAllRead': 'Barchasini o‘qilgan deb belgilash',
+    'top.notificationsEmpty': 'Hozircha bildirishnoma yo‘q',
     'top.riskManager': 'Risk menejeri',
     'top.language': 'Til',
     'top.openNavigation': 'Navigatsiyani ochish',
@@ -677,7 +686,7 @@ const completionMessages = {
     'queue.col.status': 'Holat',
     'queue.emptyDesc': 'Hozir barcha yozuvlar approved, draft yoki closed holatida.',
     'queue.emptyTitle': "Navbatda element yo'q",
-    'queue.modal.approveDesc': "Kerak bo'lsa, tasdiqlash uchun izoh qo'shing.",
+    'queue.modal.approveDesc': "Tasdiqlash qarorini qayd etish uchun izoh majburiy.",
     'queue.modal.approveTitle': 'Riskni tasdiqlash',
     'queue.modal.rejectDesc': 'Audit uchun rad etishda izoh majburiy.',
     'queue.modal.rejectTitle': 'Riskni rad etish',
@@ -731,6 +740,13 @@ const uxMessages = {
     'auth.signIn': 'Sign in',
     'auth.quickSignIn': 'Quick sign in',
     'auth.demoUsers': 'Demo employee profiles',
+    'auth.demoUsersHint': 'Use these profiles to review the workflow from each role.',
+    'auth.demoFocus.creator': 'Creates a draft risk and answers information requests.',
+    'auth.demoFocus.riskManager': 'Reviews the risk, fills financial impact, and sends it to committee.',
+    'auth.demoFocus.committee': 'Reviews committee items, records decisions, and routes mitigation.',
+    'auth.demoFocus.director': 'Prepares the mitigation plan and assigns a department employee.',
+    'auth.demoFocus.executor': 'Works on mitigation actions and returns progress for re-review.',
+    'auth.demoFocus.admin': 'Checks reference data, access, and cross-role navigation.',
     'auth.invalidCredentials': 'Invalid username or password.',
     'auth.logout': 'Sign out',
     'auth.role.admin': 'Administrator',
@@ -781,6 +797,13 @@ const uxMessages = {
     'auth.signIn': 'Войти',
     'auth.quickSignIn': 'Быстрый вход',
     'auth.demoUsers': 'Демо-профили сотрудников',
+    'auth.demoUsersHint': 'Используйте эти профили, чтобы просматривать процесс с точки зрения каждой роли.',
+    'auth.demoFocus.creator': 'Создает черновик риска и отвечает на запросы дополнительной информации.',
+    'auth.demoFocus.riskManager': 'Проверяет риск, заполняет финансовое влияние и отправляет его на комитет.',
+    'auth.demoFocus.committee': 'Рассматривает риски на комитете, фиксирует решения и направляет на mitigation.',
+    'auth.demoFocus.director': 'Готовит mitigation plan и назначает сотрудника департамента.',
+    'auth.demoFocus.executor': 'Работает по mitigation action и возвращает прогресс на повторное рассмотрение.',
+    'auth.demoFocus.admin': 'Проверяет справочники, доступы и навигацию между ролями.',
     'auth.invalidCredentials': 'Неверный логин или пароль.',
     'auth.logout': 'Выйти',
     'auth.role.admin': 'Администратор',
@@ -831,6 +854,13 @@ const uxMessages = {
     'auth.signIn': 'Kirish',
     'auth.quickSignIn': 'Tez kirish',
     'auth.demoUsers': 'Demo xodim profillari',
+    'auth.demoUsersHint': 'Jarayonni har bir rol nuqtai nazaridan ko‘rish uchun ushbu profillardan foydalaning.',
+    'auth.demoFocus.creator': 'Risk qoralamasini yaratadi va so‘ralgan ma’lumotlarga javob beradi.',
+    'auth.demoFocus.riskManager': 'Riskni ko‘rib chiqadi, moliyaviy ta’sirni to‘ldiradi va qo‘mitaga yuboradi.',
+    'auth.demoFocus.committee': 'Qo‘mita bosqichidagi risklarni ko‘rib chiqadi, qarorlarni qayd etadi va mitigation ga yo‘naltiradi.',
+    'auth.demoFocus.director': 'Mitigation rejasini tayyorlaydi va departament xodimini tayinlaydi.',
+    'auth.demoFocus.executor': 'Mitigation action lar ustida ishlaydi va progressni qayta ko‘rib chiqish uchun qaytaradi.',
+    'auth.demoFocus.admin': 'Ma’lumotnomalar, access va rollararo navigatsiyani tekshiradi.',
     'auth.invalidCredentials': 'Login yoki parol noto‘g‘ri.',
     'auth.logout': 'Chiqish',
     'auth.role.admin': 'Administrator',
@@ -863,15 +893,506 @@ Object.assign(messages.en, uxMessages.en)
 Object.assign(messages.ru, uxMessages.ru)
 Object.assign(messages.uz, uxMessages.uz)
 
+const adminMessages = {
+  en: {
+    'admin.departments': 'Departments',
+    'admin.departmentSingular': 'department',
+    'admin.categorySingular': 'risk category',
+    'admin.manageHint': 'Create, rename, and remove {{item}} entries from the admin panel.',
+    'admin.partialCrud': 'Partial CRUD',
+    'admin.nameField': 'Name',
+    'admin.namePlaceholder': 'Enter {{item}} name',
+    'admin.creating': 'Creating...',
+    'admin.createAction': 'Create',
+    'admin.validationTitle': 'Validation error',
+    'admin.validationName': 'Name is required.',
+    'admin.itemCreated': 'Entry created',
+    'admin.itemUpdated': 'Entry updated',
+    'admin.itemDeleted': 'Entry deleted',
+    'admin.actionFailed': 'Action failed',
+    'admin.backendIdHint': 'Some entries came from local seed data and cannot be edited until the backend returns stable ids in list responses.',
+    'admin.cancelEdit': 'Cancel',
+    'admin.saveAction': 'Save',
+    'admin.readOnlyItem': 'Read-only until backend exposes an id for this entry.',
+    'admin.editAction': 'Edit',
+    'admin.deleteAction': 'Delete',
+    'admin.noItems': 'No entries yet.',
+    'admin.readOnlyHint': 'This tab is visible for reference only for now.',
+    'admin.readOnlyBadge': 'Read-only',
+  },
+  ru: {
+    'admin.departments': '\u0414\u0435\u043f\u0430\u0440\u0442\u0430\u043c\u0435\u043d\u0442\u044b',
+    'admin.departmentSingular': '\u0434\u0435\u043f\u0430\u0440\u0442\u0430\u043c\u0435\u043d\u0442',
+    'admin.categorySingular': '\u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044e \u0440\u0438\u0441\u043a\u0430',
+    'admin.manageHint': '\u0421\u043e\u0437\u0434\u0430\u0432\u0430\u0439\u0442\u0435, \u043f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u044b\u0432\u0430\u0439\u0442\u0435 \u0438 \u0443\u0434\u0430\u043b\u044f\u0439\u0442\u0435 {{item}} \u043d\u0430 \u044d\u0442\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0435.',
+    'admin.partialCrud': '\u0427\u0430\u0441\u0442\u0438\u0447\u043d\u044b\u0439 CRUD',
+    'admin.nameField': '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435',
+    'admin.namePlaceholder': '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435: {{item}}',
+    'admin.creating': '\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435...',
+    'admin.createAction': '\u0421\u043e\u0437\u0434\u0430\u0442\u044c',
+    'admin.validationTitle': '\u041d\u0435 \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u043e \u043f\u043e\u043b\u0435',
+    'admin.validationName': '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e.',
+    'admin.itemCreated': '\u0417\u0430\u043f\u0438\u0441\u044c \u0441\u043e\u0437\u0434\u0430\u043d\u0430',
+    'admin.itemUpdated': '\u0417\u0430\u043f\u0438\u0441\u044c \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0430',
+    'admin.itemDeleted': '\u0417\u0430\u043f\u0438\u0441\u044c \u0443\u0434\u0430\u043b\u0435\u043d\u0430',
+    'admin.actionFailed': '\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043d\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u043e',
+    'admin.backendIdHint': '\u0427\u0430\u0441\u0442\u044c \u0441\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a\u043e\u0432 \u043f\u0440\u0438\u0448\u043b\u0430 \u0438\u0437 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0445 seed-\u0434\u0430\u043d\u043d\u044b\u0445. \u0418\u0445 \u043d\u0435\u043b\u044c\u0437\u044f \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c, \u043f\u043e\u043a\u0430 backend \u043d\u0435 \u043d\u0430\u0447\u043d\u0435\u0442 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c stable id \u0432 \u0441\u043f\u0438\u0441\u043a\u0430\u0445.',
+    'admin.cancelEdit': '\u041e\u0442\u043c\u0435\u043d\u0430',
+    'admin.saveAction': '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c',
+    'admin.readOnlyItem': '\u0422\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430, \u043f\u043e\u043a\u0430 backend \u043d\u0435 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442 id \u0434\u043b\u044f \u044d\u0442\u043e\u0439 \u0437\u0430\u043f\u0438\u0441\u0438.',
+    'admin.editAction': '\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c',
+    'admin.deleteAction': '\u0423\u0434\u0430\u043b\u0438\u0442\u044c',
+    'admin.noItems': '\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0437\u0430\u043f\u0438\u0441\u0435\u0439.',
+    'admin.readOnlyHint': '\u042d\u0442\u0430 \u0432\u043a\u043b\u0430\u0434\u043a\u0430 \u043f\u043e\u043a\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430.',
+    'admin.readOnlyBadge': '\u0422\u043e\u043b\u044c\u043a\u043e \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440',
+  },
+  uz: {
+    'admin.departments': 'Departamentlar',
+    'admin.departmentSingular': 'departament',
+    'admin.categorySingular': 'risk kategoriyasi',
+    'admin.manageHint': 'Admin paneldan {{item}} yozuvlarini yarating, qayta nomlang va o`chiring.',
+    'admin.partialCrud': 'Qisman CRUD',
+    'admin.nameField': 'Nomi',
+    'admin.namePlaceholder': '{{item}} nomini kiriting',
+    'admin.creating': 'Yaratilmoqda...',
+    'admin.createAction': 'Yaratish',
+    'admin.validationTitle': 'Validatsiya xatosi',
+    'admin.validationName': 'Nomi majburiy.',
+    'admin.itemCreated': 'Yozuv yaratildi',
+    'admin.itemUpdated': 'Yozuv yangilandi',
+    'admin.itemDeleted': 'Yozuv o`chirildi',
+    'admin.actionFailed': 'Amal bajarilmadi',
+    'admin.backendIdHint': 'Ba`zi yozuvlar lokal seed ma`lumotlaridan kelgan. Backend ro`yxat javoblarida stable id qaytarmaguncha ularni tahrirlab yoki o`chirib bo`lmaydi.',
+    'admin.cancelEdit': 'Bekor qilish',
+    'admin.saveAction': 'Saqlash',
+    'admin.readOnlyItem': 'Backend bu yozuv uchun id qaytarmaguncha faqat ko`rish rejimida.',
+    'admin.editAction': 'Tahrirlash',
+    'admin.deleteAction': 'O`chirish',
+    'admin.noItems': 'Hozircha yozuvlar yo`q.',
+    'admin.readOnlyHint': 'Bu tab hozircha faqat ma`lumot uchun ko`rsatiladi.',
+    'admin.readOnlyBadge': 'Faqat ko`rish',
+  },
+}
+
+Object.assign(messages.en, adminMessages.en)
+Object.assign(messages.ru, adminMessages.ru)
+Object.assign(messages.uz, adminMessages.uz)
+
+const formMessages = {
+  en: {
+    'form.selectCategory': 'Select category',
+    'form.selectDepartment': 'Select department',
+    'form.validation.category': 'Category is required.',
+    'form.validation.department': 'Department is required.',
+    'form.referenceSetupHint': 'Create departments and risk categories in Admin before creating a risk.',
+  },
+  ru: {
+    'form.selectCategory': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044e',
+    'form.selectDepartment': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u043f\u0430\u0440\u0442\u0430\u043c\u0435\u043d\u0442',
+    'form.validation.category': '\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u0430.',
+    'form.validation.department': '\u0414\u0435\u043f\u0430\u0440\u0442\u0430\u043c\u0435\u043d\u0442 \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u0435\u043d.',
+    'form.referenceSetupHint': '\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u0434\u0435\u043f\u0430\u0440\u0442\u0430\u043c\u0435\u043d\u0442\u044b \u0438 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438 \u0440\u0438\u0441\u043a\u043e\u0432 \u0432 \u0430\u0434\u043c\u0438\u043d\u043a\u0435, \u0430 \u043f\u043e\u0442\u043e\u043c \u0441\u043e\u0437\u0434\u0430\u0432\u0430\u0439\u0442\u0435 \u0440\u0438\u0441\u043a.',
+  },
+  uz: {
+    'form.selectCategory': 'Kategoriyani tanlang',
+    'form.selectDepartment': 'Departamentni tanlang',
+    'form.validation.category': 'Kategoriya majburiy.',
+    'form.validation.department': 'Departament majburiy.',
+    'form.referenceSetupHint': 'Risk yaratishdan oldin Admin bo`limida departament va risk kategoriyalarini yarating.',
+  },
+}
+
+Object.assign(messages.en, formMessages.en)
+Object.assign(messages.ru, formMessages.ru)
+Object.assign(messages.uz, formMessages.uz)
+
+const chatMessages = {
+  en: {
+    'details.tab.audit': 'Audit',
+    'details.auditTimeline': 'Audit',
+    'details.chatHint': 'Everyone who works with this risk will see the full audit thread, including past and future replies.',
+    'details.chatPlaceholder': 'Write a message or reply to a comment...',
+    'details.chatReply': 'Reply',
+    'details.chatReplyingTo': 'Replying to {{name}}',
+    'details.chatCancelReply': 'Cancel reply',
+    'details.chatSend': 'Send',
+    'details.chatSending': 'Sending...',
+    'details.chatEmpty': 'No messages yet. Start the conversation here.',
+    'details.chatCommentTitle': 'Comment',
+    'details.chatReplyTitle': 'Reply',
+    'details.chatSystemLabel': 'System',
+    'details.chatThreadLabel': 'Thread',
+  },
+  ru: {
+    'details.tab.audit': '\u0410\u0443\u0434\u0438\u0442',
+    'details.auditTimeline': '\u0410\u0443\u0434\u0438\u0442',
+    'details.chatHint': '\u0412\u0441\u0435, \u043a\u0442\u043e \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 \u0441 \u044d\u0442\u0438\u043c \u0440\u0438\u0441\u043a\u043e\u043c, \u0431\u0443\u0434\u0443\u0442 \u0432\u0438\u0434\u0435\u0442\u044c \u0432\u0435\u0441\u044c \u0430\u0443\u0434\u0438\u0442-\u0442\u0440\u0435\u0434, \u0432\u043a\u043b\u044e\u0447\u0430\u044f \u043f\u0440\u043e\u0448\u043b\u044b\u0435 \u0438 \u0431\u0443\u0434\u0443\u0449\u0438\u0435 \u043e\u0442\u0432\u0435\u0442\u044b.',
+    'details.chatPlaceholder': '\u041d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435 \u0438\u043b\u0438 \u043e\u0442\u0432\u0435\u0442 \u043d\u0430 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...',
+    'details.chatReply': '\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c',
+    'details.chatReplyingTo': '\u041e\u0442\u0432\u0435\u0442 {{name}}',
+    'details.chatCancelReply': '\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c \u043e\u0442\u0432\u0435\u0442',
+    'details.chatSend': '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c',
+    'details.chatSending': '\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430...',
+    'details.chatEmpty': '\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439. \u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0434\u0438\u0430\u043b\u043e\u0433 \u0437\u0434\u0435\u0441\u044c.',
+    'details.chatCommentTitle': '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439',
+    'details.chatReplyTitle': '\u041e\u0442\u0432\u0435\u0442',
+    'details.chatSystemLabel': '\u0421\u0438\u0441\u0442\u0435\u043c\u0430',
+    'details.chatThreadLabel': '\u0422\u0440\u0435\u0434',
+  },
+  uz: {
+    'details.tab.audit': 'Audit izi',
+    'details.auditTimeline': 'Audit',
+    'details.chatHint': 'Bu risk ustida ishlaydigan hamma foydalanuvchilar, hozir va keyin ham, butun yozishmani ko`radi.',
+    'details.chatPlaceholder': 'Xabar yozing yoki kommentga javob bering...',
+    'details.chatReply': 'Javob berish',
+    'details.chatReplyingTo': '{{name}} ga javob',
+    'details.chatCancelReply': 'Javobni bekor qilish',
+    'details.chatSend': 'Yuborish',
+    'details.chatSending': 'Yuborilmoqda...',
+    'details.chatEmpty': 'Hali xabarlar yo`q. Suhbatni shu yerdan boshlang.',
+    'details.chatCommentTitle': 'Komment',
+    'details.chatReplyTitle': 'Javob',
+    'details.chatSystemLabel': 'Tizim',
+    'details.chatThreadLabel': 'Thread',
+  },
+}
+
+Object.assign(messages.en, chatMessages.en)
+Object.assign(messages.ru, chatMessages.ru)
+Object.assign(messages.uz, chatMessages.uz)
+
+const draftWorkflowMessages = {
+  en: {
+    'details.editDraft': 'Edit Draft',
+    'details.submitDraft': 'Send for Review',
+    'details.draftSubmitted': 'Draft sent for review',
+    'details.draftSubmittedDesc': 'Risk moved to Pending Review.',
+    'edit.title': 'Edit Draft Risk',
+    'edit.subtitle': 'Only the author can edit a draft before it is sent for review.',
+    'edit.notFoundTitle': 'Draft not found',
+    'edit.notFoundDesc': 'This draft is unavailable or you do not have access to it.',
+    'edit.notAllowedTitle': 'Draft editing unavailable',
+    'edit.notAllowedDesc': 'Only the author can edit a risk while it is in Draft status.',
+    'edit.toast.updated': 'Draft updated',
+    'edit.toast.submitted': 'Risk sent for review',
+    'form.saveChanges': 'Save Changes',
+    'form.saving': 'Saving...',
+  },
+  ru: {
+    'details.editDraft': 'Редактировать черновик',
+    'details.submitDraft': 'Отправить на рассмотрение',
+    'details.draftSubmitted': 'Черновик отправлен на рассмотрение',
+    'details.draftSubmittedDesc': 'Риск переведен в статус "На рассмотрении".',
+    'edit.title': 'Редактирование черновика',
+    'edit.subtitle': 'Только автор может редактировать черновик до отправки на рассмотрение.',
+    'edit.notFoundTitle': 'Черновик не найден',
+    'edit.notFoundDesc': 'Этот черновик недоступен или у вас нет к нему доступа.',
+    'edit.notAllowedTitle': 'Редактирование недоступно',
+    'edit.notAllowedDesc': 'Редактировать риск можно только автору и только пока статус остается "Черновик".',
+    'edit.toast.updated': 'Черновик обновлен',
+    'edit.toast.submitted': 'Риск отправлен на рассмотрение',
+    'form.saveChanges': 'Сохранить изменения',
+    'form.saving': 'Сохранение...',
+  },
+  uz: {
+    'details.editDraft': 'Qoralamani tahrirlash',
+    'details.submitDraft': 'Ko‘rib chiqishga yuborish',
+    'details.draftSubmitted': 'Qoralama ko‘rib chiqishga yuborildi',
+    'details.draftSubmittedDesc': 'Risk "Ko‘rib chiqishda" statusiga o‘tdi.',
+    'edit.title': 'Risk qoralamasini tahrirlash',
+    'edit.subtitle': 'Qoralamani ko‘rib chiqishga yuborishdan oldin uni faqat muallif tahrirlashi mumkin.',
+    'edit.notFoundTitle': 'Qoralama topilmadi',
+    'edit.notFoundDesc': 'Bu qoralama mavjud emas yoki sizda unga access yo‘q.',
+    'edit.notAllowedTitle': 'Tahrirlash yopiq',
+    'edit.notAllowedDesc': 'Riskni faqat muallif va faqat "Draft" statusida tahrirlashi mumkin.',
+    'edit.toast.updated': 'Qoralama yangilandi',
+    'edit.toast.submitted': 'Risk ko‘rib chiqishga yuborildi',
+    'form.saveChanges': 'O‘zgarishlarni saqlash',
+    'form.saving': 'Saqlanmoqda...',
+  },
+}
+
+Object.assign(messages.en, draftWorkflowMessages.en)
+Object.assign(messages.ru, draftWorkflowMessages.ru)
+Object.assign(messages.uz, draftWorkflowMessages.uz)
+
+const auditEventMessages = {
+  en: {
+    'audit.event.approved': 'Risk approved',
+    'audit.event.rejected': 'Risk rejected',
+    'audit.event.requestInfo': 'Additional information requested',
+    'audit.event.acceptResidualRisk': 'Residual risk accepted',
+  },
+  ru: {
+    'audit.event.approved': 'Риск одобрен',
+    'audit.event.rejected': 'Риск отклонен',
+    'audit.event.requestInfo': 'Запрошена дополнительная информация',
+    'audit.event.acceptResidualRisk': 'Остаточный риск принят',
+  },
+  uz: {
+    'audit.event.approved': 'Risk tasdiqlandi',
+    'audit.event.rejected': 'Risk rad etildi',
+    'audit.event.requestInfo': 'Qo‘shimcha ma’lumot so‘raldi',
+    'audit.event.acceptResidualRisk': 'Qoldiq risk qabul qilindi',
+  },
+}
+
+Object.assign(messages.en, auditEventMessages.en)
+Object.assign(messages.ru, auditEventMessages.ru)
+Object.assign(messages.uz, auditEventMessages.uz)
+
+const workflowLockMessages = {
+  en: {
+    'workflow.awaitingResponse': 'Action buttons are locked until another participant replies in the audit. You can continue the discussion in chat.',
+    'workflow.awaitingResponseShort': 'Waiting for a reply in the audit',
+  },
+  ru: {
+    'workflow.awaitingResponse': 'Кнопки действий заблокированы, пока другой участник не ответит в аудите. Пока можно только продолжать обсуждение в чате.',
+    'workflow.awaitingResponseShort': 'Ожидается ответ в аудите',
+  },
+  uz: {
+    'workflow.awaitingResponse': 'Boshqa ishtirokchi auditda javob bermaguncha amal tugmalari bloklanadi. Hozircha faqat chatda yozish mumkin.',
+    'workflow.awaitingResponseShort': 'Auditda javob kutilmoqda',
+  },
+}
+
+Object.assign(messages.en, workflowLockMessages.en)
+Object.assign(messages.ru, workflowLockMessages.ru)
+Object.assign(messages.uz, workflowLockMessages.uz)
+
+const responseSubmissionMessages = {
+  en: {
+    'details.submitResponse': 'Send response',
+    'details.submitResponseTitle': 'Send response for review',
+    'details.submitResponseDesc': 'Write your response to the audit comment and return the risk to the next review stage.',
+    'details.submitResponseConfirm': 'Send for review',
+    'details.responseSubmitted': 'Response sent for review',
+  },
+  ru: {
+    'details.submitResponse': 'Ответить и вернуть',
+    'details.submitResponseTitle': 'Ответить и вернуть на рассмотрение',
+    'details.submitResponseDesc': 'Напиши ответ в аудит и верни риск на следующий этап рассмотрения.',
+    'details.submitResponseConfirm': 'Отправить на рассмотрение',
+    'details.responseSubmitted': 'Ответ отправлен на рассмотрение',
+  },
+  uz: {
+    'details.submitResponse': 'Javobni yuborish',
+    'details.submitResponseTitle': 'Javobni ko‘rib chiqishga yuborish',
+    'details.submitResponseDesc': 'Auditga javob yozing va riskni keyingi ko‘rib chiqish bosqichiga qaytaring.',
+    'details.submitResponseConfirm': 'Ko‘rib chiqishga yuborish',
+    'details.responseSubmitted': 'Javob ko‘rib chiqishga yuborildi',
+  },
+}
+
+Object.assign(messages.en, responseSubmissionMessages.en)
+Object.assign(messages.ru, responseSubmissionMessages.ru)
+Object.assign(messages.uz, responseSubmissionMessages.uz)
+
+const departmentAssignmentMessages = {
+  en: {
+    'modal.selectDepartment': 'Select department',
+    'details.mitigationDepartment': 'Mitigation department',
+  },
+  ru: {
+    'modal.selectDepartment': 'Выберите департамент',
+    'details.mitigationDepartment': 'Mitigation департамент',
+  },
+  uz: {
+    'modal.selectDepartment': "Bo'limni tanlang",
+    'details.mitigationDepartment': 'Mitigation bo‘limi',
+  },
+}
+
+Object.assign(messages.en, departmentAssignmentMessages.en)
+Object.assign(messages.ru, departmentAssignmentMessages.ru)
+Object.assign(messages.uz, departmentAssignmentMessages.uz)
+
+const workflowActionMessages = {
+  en: {
+    'workflow.action.sendToCommittee': 'Send to Committee',
+    'workflow.action.sendToMitigation': 'Send to Mitigation',
+    'workflow.action.acceptResidualRisk': 'Accept Residual Risk',
+    'workflow.action.additionalMitigation': 'Additional Mitigation',
+    'workflow.action.closeRisk': 'Close Risk',
+    'details.sendToCommitteeTitle': 'Send Risk to Committee',
+    'details.sendToMitigationTitle': 'Send Risk to Mitigation',
+    'details.sendToMitigationDesc': 'Select the department that will own mitigation for this risk.',
+    'details.closeRiskTitle': 'Close Risk',
+    'details.additionalMitigationTitle': 'Request Additional Mitigation',
+    'details.additionalMitigationDesc': 'Select the department that should continue mitigation on the next cycle.',
+    'details.acceptResidualRiskTitle': 'Accept Residual Risk',
+    'details.submitMitigationReview': 'Send to Committee Review',
+    'details.submitMitigationReviewTitle': 'Send to Committee Review',
+    'details.submitMitigationReviewDesc': 'Add a comment and return this risk to the committee for the second review stage.',
+    'details.submitMitigationReviewConfirm': 'Send to Committee Review',
+    'details.sentToCommitteeReview': 'Sent to Committee Review',
+    'details.assignResponsibleFirstTitle': 'Assign responsible user first',
+    'details.assignResponsibleFirstDesc': 'The mitigation department director must assign an employee before adding mitigation actions.',
+    'audit.event.sentToCommittee': 'Sent to committee review',
+    'audit.event.sentToMitigation': 'Sent to mitigation',
+    'audit.event.closed': 'Risk closed',
+    'audit.event.additionalMitigation': 'Additional mitigation requested',
+  },
+  ru: {
+    'workflow.action.sendToCommittee': 'Отправить в комитет',
+    'workflow.action.sendToMitigation': 'Отправить на mitigation',
+    'workflow.action.acceptResidualRisk': 'Принять остаточный риск',
+    'workflow.action.additionalMitigation': 'Отправить на дополнительный mitigation',
+    'workflow.action.closeRisk': 'Закрыть риск',
+    'details.sendToCommitteeTitle': 'Отправить риск в комитет',
+    'details.sendToMitigationTitle': 'Отправить риск на mitigation',
+    'details.sendToMitigationDesc': 'Выберите департамент, который будет отвечать за mitigation этого риска.',
+    'details.closeRiskTitle': 'Закрыть риск',
+    'details.additionalMitigationTitle': 'Отправить на дополнительный mitigation',
+    'details.additionalMitigationDesc': 'Выберите департамент, который должен продолжить mitigation на следующем цикле.',
+    'details.acceptResidualRiskTitle': 'Принять остаточный риск',
+    'details.submitMitigationReview': 'Отправить на рассмотрение комитета',
+    'details.submitMitigationReviewTitle': 'Отправить на рассмотрение комитета',
+    'details.submitMitigationReviewDesc': 'Добавьте комментарий и верните риск в комитет на второй этап рассмотрения.',
+    'details.submitMitigationReviewConfirm': 'Отправить в комитет',
+    'details.sentToCommitteeReview': 'Отправлено в комитет',
+    'details.assignResponsibleFirstTitle': 'Сначала назначьте ответственного',
+    'details.assignResponsibleFirstDesc': 'Директор mitigation-департамента должен назначить сотрудника перед добавлением mitigation-действий.',
+    'audit.event.sentToCommittee': 'Отправлено в комитет',
+    'audit.event.sentToMitigation': 'Отправлено на mitigation',
+    'audit.event.closed': 'Риск закрыт',
+    'audit.event.additionalMitigation': 'Запрошен дополнительный mitigation',
+  },
+  uz: {
+    'workflow.action.sendToCommittee': "Qo'mitaga yuborish",
+    'workflow.action.sendToMitigation': 'Mitigationga yuborish',
+    'workflow.action.acceptResidualRisk': 'Qoldiq riskni qabul qilish',
+    'workflow.action.additionalMitigation': "Qo'shimcha mitigationga yuborish",
+    'workflow.action.closeRisk': 'Riskni yopish',
+    'details.sendToCommitteeTitle': "Riskni qo'mitaga yuborish",
+    'details.sendToMitigationTitle': 'Riskni mitigationga yuborish',
+    'details.sendToMitigationDesc': 'Ushbu risk bo‘yicha mitigation uchun javobgar bo‘ladigan bo‘limni tanlang.',
+    'details.closeRiskTitle': 'Riskni yopish',
+    'details.additionalMitigationTitle': "Qo'shimcha mitigationga yuborish",
+    'details.additionalMitigationDesc': 'Keyingi siklda mitigationni davom ettiradigan bo‘limni tanlang.',
+    'details.acceptResidualRiskTitle': 'Qoldiq riskni qabul qilish',
+    'details.submitMitigationReview': "Qo'mita ko‘rib chiqishiga yuborish",
+    'details.submitMitigationReviewTitle': "Qo'mita ko‘rib chiqishiga yuborish",
+    'details.submitMitigationReviewDesc': 'Izoh qoldiring va riskni qo‘mita ko‘rib chiqishining ikkinchi bosqichiga qaytaring.',
+    'details.submitMitigationReviewConfirm': "Qo'mitaga yuborish",
+    'details.sentToCommitteeReview': "Qo'mitaga yuborildi",
+    'details.assignResponsibleFirstTitle': "Avval mas'ul xodimni biriktiring",
+    'details.assignResponsibleFirstDesc': 'Mitigation bo‘limi direktori mitigation vazifalarini qo‘shishdan oldin xodimni tayinlashi kerak.',
+    'audit.event.sentToCommittee': "Qo'mita ko‘rib chiqishiga yuborildi",
+    'audit.event.sentToMitigation': 'Mitigationga yuborildi',
+    'audit.event.closed': 'Risk yopildi',
+    'audit.event.additionalMitigation': "Qo'shimcha mitigation so‘raldi",
+  },
+}
+
+Object.assign(messages.en, workflowActionMessages.en)
+Object.assign(messages.ru, workflowActionMessages.ru)
+Object.assign(messages.uz, workflowActionMessages.uz)
+
+const notificationMessages = {
+  en: {
+    'notification.mitigationAssignedTitle': 'Risk assigned to your department',
+    'notification.mitigationAssignedDesc': '{{riskId}} was sent to {{department}} for mitigation planning.',
+    'notification.additionalMitigationAssignedTitle': 'Additional mitigation assigned to your department',
+    'notification.additionalMitigationAssignedDesc': '{{riskId}} was returned to {{department}} for an additional mitigation cycle.',
+    'notification.responsibleAssignedTitle': 'You were assigned to a mitigation plan',
+    'notification.responsibleAssignedDesc': '{{riskId}} was assigned to you for mitigation execution.',
+  },
+  ru: {
+    'notification.mitigationAssignedTitle': 'Риск направлен в ваш департамент',
+    'notification.mitigationAssignedDesc': '{{riskId}} отправлен в {{department}} для планирования mitigation.',
+    'notification.additionalMitigationAssignedTitle': 'В ваш департамент направлен дополнительный mitigation',
+    'notification.additionalMitigationAssignedDesc': '{{riskId}} возвращен в {{department}} на дополнительный цикл mitigation.',
+    'notification.responsibleAssignedTitle': 'Вас назначили исполнителем mitigation-плана',
+    'notification.responsibleAssignedDesc': '{{riskId}} назначен вам для выполнения mitigation.',
+  },
+  uz: {
+    'notification.mitigationAssignedTitle': 'Risk sizning bo‘limingizga yuborildi',
+    'notification.mitigationAssignedDesc': '{{riskId}} mitigation rejasini tuzish uchun {{department}} bo‘limiga yuborildi.',
+    'notification.additionalMitigationAssignedTitle': "Qo'shimcha mitigation sizning bo‘limingizga yuborildi",
+    'notification.additionalMitigationAssignedDesc': '{{riskId}} qo‘shimcha mitigation sikli uchun {{department}} bo‘limiga qaytarildi.',
+    'notification.responsibleAssignedTitle': 'Siz mitigation rejasi uchun biriktirildingiz',
+    'notification.responsibleAssignedDesc': '{{riskId}} mitigation bajarilishi uchun sizga biriktirildi.',
+  },
+}
+
+Object.assign(messages.en, notificationMessages.en)
+Object.assign(messages.ru, notificationMessages.ru)
+Object.assign(messages.uz, notificationMessages.uz)
+
+const committeeVisualMessages = {
+  en: {
+    'committee.agendaSubtitle': 'Items currently waiting for a committee decision',
+    'committee.agendaEmptyTitle': 'No committee items',
+    'committee.agendaEmptyDesc': 'There are no risks waiting for committee action right now.',
+    'committee.logSubtitle': 'Decision history across both committee review stages',
+    'committee.reason.stage2': 'Final review',
+    'committee.metric.total': 'Agenda Items',
+    'committee.metric.stage2': 'Final Reviews',
+    'committee.metric.locked': 'Awaiting Reply',
+    'committee.sourceDepartment': 'Source department',
+    'committee.mitigationDepartment': 'Mitigation department',
+    'committee.expectedLoss': 'Expected loss',
+    'committee.lastReviewed': 'Last reviewed',
+    'committee.noMitigationDepartment': 'Not assigned yet',
+    'committee.cardReady': 'Ready for review and decision recording',
+  },
+  ru: {
+    'committee.agendaSubtitle': 'Элементы, которые сейчас ожидают решения комитета',
+    'committee.agendaEmptyTitle': 'Нет элементов для комитета',
+    'committee.agendaEmptyDesc': 'Сейчас нет рисков, ожидающих действия комитета.',
+    'committee.logSubtitle': 'История решений по обоим этапам рассмотрения комитетом',
+    'committee.reason.stage2': 'Финальное рассмотрение',
+    'committee.metric.total': 'Элементы повестки',
+    'committee.metric.stage2': 'Финальные ревью',
+    'committee.metric.locked': 'Ожидают ответа',
+    'committee.sourceDepartment': 'Департамент-источник',
+    'committee.mitigationDepartment': 'Mitigation департамент',
+    'committee.expectedLoss': 'Ожидаемый убыток',
+    'committee.lastReviewed': 'Последнее рассмотрение',
+    'committee.noMitigationDepartment': 'Пока не назначен',
+    'committee.cardReady': 'Готов к рассмотрению и фиксации решения',
+  },
+  uz: {
+    'committee.agendaSubtitle': "Hozir qo'mita qarorini kutayotgan elementlar",
+    'committee.agendaEmptyTitle': "Qo'mita uchun elementlar yo'q",
+    'committee.agendaEmptyDesc': "Hozir qo'mita amali talab qiladigan risklar yo'q.",
+    'committee.logSubtitle': "Qo'mita ko'rib chiqishining ikkala bosqichi bo'yicha qarorlar tarixi",
+    'committee.reason.stage2': "Yakuniy ko'rib chiqish",
+    'committee.metric.total': 'Kun tartibi',
+    'committee.metric.stage2': "Yakuniy ko'rib chiqishlar",
+    'committee.metric.locked': 'Javob kutilmoqda',
+    'committee.sourceDepartment': 'Manba bo‘lim',
+    'committee.mitigationDepartment': 'Mitigation bo‘limi',
+    'committee.expectedLoss': "Kutilayotgan yo'qotish",
+    'committee.lastReviewed': "Oxirgi ko'rib chiqish",
+    'committee.noMitigationDepartment': 'Hali tayinlanmagan',
+    'committee.cardReady': "Ko'rib chiqish va qarorni qayd etish uchun tayyor",
+  },
+}
+
+Object.assign(messages.en, committeeVisualMessages.en)
+Object.assign(messages.ru, committeeVisualMessages.ru)
+Object.assign(messages.uz, committeeVisualMessages.uz)
+
 const enumDictionary = {
   status: {
     Draft: { en: 'Draft', ru: 'Черновик', uz: 'Qoralama' },
+    'Under Risk Review': { en: 'Under Risk Review', ru: 'На рассмотрении у Risk Manager', uz: 'Risk manager ko‘rib chiqmoqda' },
+    'Info Requested by Risk Manager': { en: 'Info Requested by Risk Manager', ru: 'Запрошена информация Risk Manager-ом', uz: 'Risk manager qo‘shimcha ma’lumot so‘radi' },
+    'Rejected by Risk Manager': { en: 'Rejected by Risk Manager', ru: 'Отклонен Risk Manager-ом', uz: 'Risk manager rad etdi' },
+    'Committee Review 1': { en: 'Committee Review 1', ru: 'Committee Review 1', uz: 'Committee Review 1' },
+    'Info Requested by Committee': { en: 'Info Requested by Committee', ru: 'Запрошена информация комитетом', uz: 'Qo‘mita qo‘shimcha ma’lumot so‘radi' },
+    'Accepted for Mitigation': { en: 'Accepted for Mitigation', ru: 'Одобрен для mitigation', uz: 'Mitigation uchun qabul qilindi' },
     'Pending Review': { en: 'Pending Review', ru: 'На рассмотрении', uz: "Ko'rib chiqishda" },
     'Requested Info': { en: 'Requested Info', ru: 'Запрошены данные', uz: "Ma'lumot so'ralgan" },
     Approved: { en: 'Approved', ru: 'Одобрен', uz: 'Tasdiqlangan' },
     'In Mitigation': { en: 'In Mitigation', ru: 'В работе', uz: 'Mitigation jarayonida' },
+    'Committee Review 2': { en: 'Committee Review 2', ru: 'Committee Review 2', uz: 'Committee Review 2' },
+    'Additional Mitigation Required': { en: 'Additional Mitigation Required', ru: 'Требуется дополнительный mitigation', uz: 'Qo‘shimcha mitigation talab qilinadi' },
     Overdue: { en: 'Overdue', ru: 'Просрочен', uz: "Muddati o'tgan" },
     Closed: { en: 'Closed', ru: 'Закрыт', uz: 'Yopilgan' },
+    'Risk Accepted': { en: 'Risk Accepted', ru: 'Риск принят', uz: 'Risk qabul qilindi' },
     Rejected: { en: 'Rejected', ru: 'Отклонен', uz: 'Rad etilgan' },
   },
   severity: {
@@ -910,6 +1431,96 @@ const enumDictionary = {
     Done: { en: 'Done', ru: 'Готово', uz: 'Bajarilgan' },
   },
 }
+
+const analystWorkflowMessages = {
+  en: {
+    'create.subtitle': 'Register a risk draft and send it for analyst review.',
+    'auth.demoFocus.riskManager': 'Reviews the risk, sets probability, impact, and possible loss, then forwards it to committee.',
+    'form.workflowStep1Desc': 'Business units register the issue, controls, and related context, then save it as a draft or send it for review.',
+    'form.workflowStep2Desc': 'The risk analyst later opens the card and records fixed probability, impact, and possible loss values.',
+    'form.workflowResultDesc': 'The risk enters the register without analyst assessment. Analytics is completed as a separate review stage.',
+    'details.tab.financial': 'Analytics',
+    'details.financial': 'Risk Analytics',
+    'details.financialPending': 'Awaiting analyst review',
+    'details.financialPendingTitle': 'Analytics has not been added yet',
+    'details.financialPendingDesc': 'This risk was created by a business user. The risk analyst will set probability, impact, and possible loss during review.',
+    'details.financialEditable': 'The risk analyst can set fixed probability, impact, and possible loss values on this tab.',
+    'details.financialReadOnlyDesc': 'Only the risk analyst and administrators can edit this stage.',
+    'details.saveFinancial': 'Save Analytics',
+    'details.financialUpdated': 'Analytics updated',
+    'details.impactMostLikely': 'Possible loss (UZS)',
+    'details.impactLevel': 'Impact',
+    'details.preview': 'Analytics Preview',
+    'details.decisionResult': 'Result status',
+    'details.decisionStage': 'Review stage',
+    'details.decidedBy': 'Recorded by',
+    'details.decidedAt': 'Recorded at',
+    'modal.selectOption': 'Select value',
+    'committee.stageTab1': 'Committee Review 1',
+    'committee.stageTab2': 'Committee Review 2',
+  },
+  ru: {
+    'create.subtitle': 'Регистрация черновика риска и отправка на рассмотрение аналитика.',
+    'auth.demoFocus.riskManager': 'Проверяет риск, задаёт вероятность, влияние и возможную потерю, затем отправляет его в комитет.',
+    'form.workflowStep1Desc': 'Бизнес-подразделение регистрирует проблему, контролы и контекст риска, после чего сохраняет черновик или отправляет его на рассмотрение.',
+    'form.workflowStep2Desc': 'Позже аналитик по рискам открывает карточку и фиксирует вероятность, влияние и возможную сумму потери.',
+    'form.workflowResultDesc': 'Риск попадает в реестр без аналитической оценки. Аналитика заполняется отдельным этапом рассмотрения.',
+    'details.tab.financial': 'Аналитика',
+    'details.financial': 'Аналитика риска',
+    'details.financialPending': 'Ожидает аналитики',
+    'details.financialPendingTitle': 'Аналитика пока не заполнена',
+    'details.financialPendingDesc': 'Эта карточка была создана бизнес-пользователем. Вероятность, влияние и возможная потеря будут заданы аналитиком по рискам на этапе рассмотрения.',
+    'details.financialEditable': 'На этой вкладке аналитик по рискам задаёт фиксированные значения вероятности, влияния и возможной потери.',
+    'details.financialReadOnlyDesc': 'Редактирование этого этапа доступно только аналитику по рискам и администраторам.',
+    'details.saveFinancial': 'Сохранить аналитику',
+    'details.financialUpdated': 'Аналитика обновлена',
+    'details.impactMostLikely': 'Возможная потеря (UZS)',
+    'details.impactLevel': 'Влияние',
+    'details.preview': 'Предварительный расчёт',
+    'details.decisionResult': 'Итоговый статус',
+    'details.decisionStage': 'Этап рассмотрения',
+    'details.decidedBy': 'Кто зафиксировал',
+    'details.decidedAt': 'Когда зафиксировано',
+    'modal.selectOption': 'Выберите значение',
+    'committee.stageTab1': 'Committee Review 1',
+    'committee.stageTab2': 'Committee Review 2',
+  },
+  uz: {
+    'create.subtitle': 'Risk qoralamasini yarating va uni analitik ko`rib chiqishiga yuboring.',
+    'auth.demoFocus.riskManager': 'Riskni ko`rib chiqadi, ehtimollik, ta`sir va mumkin bo`lgan yo`qotishni belgilaydi, so`ng qo`mitaga yuboradi.',
+    'form.workflowStep1Desc': 'Biznes bo‘lim muammo, nazoratlar va risk kontekstini ro‘yxatdan o‘tkazadi, keyin qoralama sifatida saqlaydi yoki ko‘rib chiqishga yuboradi.',
+    'form.workflowStep2Desc': 'Keyin risk analitigi kartani ochib, qat`iy ehtimollik, ta`sir va mumkin bo`lgan yo`qotish qiymatlarini kiritadi.',
+    'form.workflowResultDesc': 'Risk reyestrga analitik bahosiz kiradi. Analitika keyingi alohida bosqichda to`ldiriladi.',
+    'details.tab.financial': 'Analitika',
+    'details.financial': 'Risk analitikasi',
+    'details.financialPending': 'Analitika kutilmoqda',
+    'details.financialPendingTitle': 'Analitika hali kiritilmagan',
+    'details.financialPendingDesc': 'Bu karta biznes foydalanuvchi tomonidan yaratilgan. Ehtimollik, ta`sir va mumkin bo`lgan yo`qotish risk analitigi tomonidan ko`rib chiqish bosqichida to`ldiriladi.',
+    'details.financialEditable': 'Bu bo`limda risk analitigi ehtimollik, ta`sir va mumkin bo`lgan yo`qotishning qat`iy qiymatlarini belgilaydi.',
+    'details.financialReadOnlyDesc': 'Bu bosqichni faqat risk analitigi va administratorlar tahrirlashi mumkin.',
+    'details.saveFinancial': 'Analitikani saqlash',
+    'details.financialUpdated': 'Analitika yangilandi',
+    'details.impactMostLikely': 'Mumkin bo`lgan yo`qotish (UZS)',
+    'details.impactLevel': 'Ta`sir',
+    'details.preview': 'Analitika preview',
+    'details.decisionResult': 'Natijaviy status',
+    'details.decisionStage': 'Ko`rib chiqish bosqichi',
+    'details.decidedBy': 'Kim qayd etdi',
+    'details.decidedAt': 'Qachon qayd etildi',
+    'modal.selectOption': 'Qiymatni tanlang',
+    'committee.stageTab1': 'Committee Review 1',
+    'committee.stageTab2': 'Committee Review 2',
+  },
+}
+
+Object.assign(messages.en, analystWorkflowMessages.en)
+Object.assign(messages.ru, analystWorkflowMessages.ru)
+Object.assign(messages.uz, analystWorkflowMessages.uz)
+
+Object.assign(enumDictionary.severity, {
+  Small: { en: 'Small', ru: 'Малое', uz: 'Kichik' },
+  Strong: { en: 'Strong', ru: 'Сильное', uz: 'Kuchli' },
+})
 
 export const supportedLanguages = [
   { code: 'ru', label: 'RU' },

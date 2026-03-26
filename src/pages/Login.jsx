@@ -23,7 +23,9 @@ export default function Login() {
     pointerId: null,
     startX: 0,
     startScrollLeft: 0,
+    dragStarted: false,
     suppressClick: false,
+    pressedAccountId: null,
   })
 
   const handleChange = (field) => (event) => {
@@ -32,7 +34,7 @@ export default function Login() {
   }
 
   const handleSelectAccount = (account) => {
-    if (dragStateRef.current.suppressClick) {
+    if (!account) {
       return
     }
     setSelectedAccountId(account.id)
@@ -67,9 +69,10 @@ export default function Login() {
       pointerId: event.pointerId,
       startX: event.clientX,
       startScrollLeft: rail.scrollLeft,
+      dragStarted: false,
       suppressClick: false,
+      pressedAccountId: event.target.closest('[data-account-id]')?.dataset.accountId ?? null,
     }
-    setIsProfilesDragging(true)
 
     try {
       rail.setPointerCapture(event.pointerId)
@@ -90,8 +93,14 @@ export default function Login() {
     }
 
     const deltaX = event.clientX - state.startX
-    if (Math.abs(deltaX) > 4) {
+    if (Math.abs(deltaX) > 8) {
+      state.dragStarted = true
       state.suppressClick = true
+      setIsProfilesDragging(true)
+    }
+
+    if (!state.dragStarted) {
+      return
     }
 
     rail.scrollLeft = state.startScrollLeft - deltaX
@@ -104,6 +113,8 @@ export default function Login() {
     }
 
     state.active = false
+    const shouldSelectAccount = !state.dragStarted && state.pressedAccountId
+    const pressedAccountId = state.pressedAccountId
     setIsProfilesDragging(false)
 
     const rail = profilesRailRef.current
@@ -115,10 +126,18 @@ export default function Login() {
       }
     }
 
-    if (state.suppressClick) {
-      window.setTimeout(() => {
-        dragStateRef.current.suppressClick = false
-      }, 0)
+    dragStateRef.current = {
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startScrollLeft: 0,
+      dragStarted: false,
+      suppressClick: false,
+      pressedAccountId: null,
+    }
+
+    if (shouldSelectAccount) {
+      handleSelectAccount(accounts.find((account) => account.id === pressedAccountId) ?? null)
     }
   }
 
@@ -192,9 +211,14 @@ export default function Login() {
 
         <div className="mt-3">
           <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              {t('auth.demoUsers')}
-            </h2>
+            <div>
+              <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                {t('auth.demoUsers')}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {t('auth.demoUsersHint')}
+              </p>
+            </div>
           </div>
 
           <div
@@ -217,19 +241,33 @@ export default function Login() {
                   <button
                     key={account.id}
                     type="button"
-                    onClick={() => handleSelectAccount(account)}
+                    data-account-id={account.id}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        handleSelectAccount(account)
+                      }
+                    }}
                     className={[
-                      'w-44 shrink-0 rounded-lg border px-3 py-2 text-left transition-colors',
+                      'w-56 shrink-0 rounded-lg border px-3 py-3 text-left transition-colors',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
                       isSelected
                         ? 'border-[color:var(--brand-blue)] bg-[rgba(0,65,182,0.12)] text-slate-950 outline-[color:var(--brand-blue)] dark:border-[#5a84ff] dark:bg-[rgba(90,132,255,0.18)] dark:text-white'
                         : 'border-slate-200 bg-slate-50 text-slate-800 outline-[color:var(--brand-blue)] hover:border-slate-300 hover:bg-white dark:border-[color:var(--brand-dark-border)] dark:bg-[color:var(--brand-dark-surface-2)] dark:text-slate-100 dark:hover:border-[color:var(--brand-dark-border-strong)] dark:hover:bg-[#17325d]',
                     ].join(' ')}
                   >
-                    <div className="truncate text-sm font-semibold">{account.name}</div>
-                    <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                    <div className="text-sm font-semibold leading-5">{account.name}</div>
+                    <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                       {account.role}
                     </div>
+                    <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+                      {account.department}
+                    </div>
+                    {account.demoFocusKey ? (
+                      <div className="mt-2 text-[11px] leading-4 text-slate-600 dark:text-slate-300">
+                        {t(account.demoFocusKey)}
+                      </div>
+                    ) : null}
                   </button>
                 )
               })}

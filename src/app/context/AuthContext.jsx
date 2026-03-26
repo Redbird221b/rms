@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { demoAccounts, users } from '../../data/seed'
+import { demoAccounts, users } from '../../data/seedMeta'
 import { canAccessPath, getPermissions, getRoleConfig, hasPermission as hasPermissionForUser } from '../../lib/access'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
 
