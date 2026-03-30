@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { useI18n } from './context/I18nContext'
 import AppShell from './layout/AppShell'
 import AccessDenied from '../pages/AccessDenied'
 import Admin from '../pages/Admin'
@@ -13,9 +14,31 @@ import RisksList from '../pages/RisksList'
 import ReviewQueue from '../pages/ReviewQueue'
 import { PERMISSIONS } from '../lib/access'
 
+function AuthGateFallback() {
+  const { language } = useI18n()
+  const title =
+    language === 'uz'
+      ? 'Sessiya tekshirilmoqda...'
+      : language === 'en'
+        ? 'Checking your session...'
+        : 'Проверяем сессию...'
+
+  return (
+    <main className="flex min-h-screen items-center justify-center px-4">
+      <section className="panel w-full max-w-md p-6 text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
+      </section>
+    </main>
+  )
+}
+
 function ProtectedShell() {
   const location = useLocation()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isReady } = useAuth()
+
+  if (!isReady) {
+    return <AuthGateFallback />
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />
@@ -25,7 +48,11 @@ function ProtectedShell() {
 }
 
 function PublicOnly({ children }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isReady } = useAuth()
+
+  if (!isReady) {
+    return <AuthGateFallback />
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />

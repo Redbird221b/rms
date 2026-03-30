@@ -1,5 +1,6 @@
 import { getImpactLevel, recalculateRisk } from './compute'
 import { normalizeDepartmentName } from './departments'
+import { refreshKeycloakToken } from './keycloak'
 
 const DEFAULT_API_BASE_URL = 'http://172.16.55.9:8000'
 
@@ -185,11 +186,13 @@ function pickErrorMessage(payload) {
 }
 
 async function request(path, { method = 'GET', body, unwrapData = true } = {}) {
+  const token = await refreshKeycloakToken(30).catch(() => null)
   const response = await fetch(buildUrl(path), {
     method,
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })

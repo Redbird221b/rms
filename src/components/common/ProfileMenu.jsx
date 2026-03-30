@@ -1,12 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, LogOut, UserCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/context/AuthContext'
 import { useI18n } from '../../app/context/I18nContext'
 
 export default function ProfileMenu() {
-  const navigate = useNavigate()
   const { currentUser, logout } = useAuth()
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
@@ -97,8 +95,7 @@ export default function ProfileMenu() {
                 className="btn-secondary justify-start gap-2"
                 onClick={() => {
                   setOpen(false)
-                  logout()
-                  navigate('/login', { replace: true })
+                  void logout()
                 }}
               >
                 <LogOut className="h-4 w-4" />

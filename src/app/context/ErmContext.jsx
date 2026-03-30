@@ -19,7 +19,7 @@ import {
   departments as seedDepartments,
   queueStatuses,
   statuses,
-  users,
+  users as seedUsers,
 } from '../../data/seedMeta'
 import { useAuth } from './AuthContext'
 import { canViewRisk } from '../../lib/access'
@@ -165,7 +165,7 @@ function loadCachedDataset() {
 }
 
 export function ErmProvider({ children }) {
-  const { currentUser } = useAuth()
+  const { currentUser, directoryUsers } = useAuth()
   const initialCachedDataset = currentUser?.id ? loadCachedDataset() : null
   const [risks, setRisks] = useState(() => initialCachedDataset?.risks ?? [])
   const [mitigationActions, setMitigationActions] = useState(() => initialCachedDataset?.mitigationActions ?? [])
@@ -732,8 +732,8 @@ export function ErmProvider({ children }) {
     if (!currentUser) {
       return []
     }
-    return risks.filter((risk) => canViewRisk(currentUser, risk, users))
-  }, [currentUser, risks])
+    return risks.filter((risk) => canViewRisk(currentUser, risk, directoryUsers))
+  }, [currentUser, directoryUsers, risks])
 
   const filteredRisks = useMemo(
     () => applyGlobalRiskFilters(scopedRisks, globalFilters),
@@ -877,7 +877,7 @@ export function ErmProvider({ children }) {
     categoryItems,
     statuses,
     queueStatuses,
-    users,
+    users: directoryUsers ?? seedUsers,
     isBackendConnected,
     notifications,
     unreadNotificationCount,
