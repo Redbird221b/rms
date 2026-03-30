@@ -1,10 +1,17 @@
 import Keycloak from 'keycloak-js'
 
-const DEFAULT_KEYCLOAK_URL = 'http://localhost:8080'
 const DEFAULT_KEYCLOAK_REALM = 'risk-management-system'
 const DEFAULT_KEYCLOAK_CLIENT_ID = 'frontend-client'
 
-export const KEYCLOAK_URL = String(import.meta.env.VITE_KEYCLOAK_URL || DEFAULT_KEYCLOAK_URL).replace(/\/+$/, '')
+function getDefaultKeycloakUrl() {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:8080'
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:8080`
+}
+
+export const KEYCLOAK_URL = String(import.meta.env.VITE_KEYCLOAK_URL || getDefaultKeycloakUrl()).replace(/\/+$/, '')
 export const KEYCLOAK_REALM = String(import.meta.env.VITE_KEYCLOAK_REALM || DEFAULT_KEYCLOAK_REALM).trim()
 export const KEYCLOAK_CLIENT_ID = String(
   import.meta.env.VITE_KEYCLOAK_CLIENT_ID || DEFAULT_KEYCLOAK_CLIENT_ID,
