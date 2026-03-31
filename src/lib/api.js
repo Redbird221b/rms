@@ -27,23 +27,42 @@ const LEGACY_API_TO_CATEGORY = {
 }
 
 const STATUS_TO_API = {
-  Draft: 'OPEN',
-  'Under Risk Review': 'IN_PROGRESS',
-  'Info Requested by Risk Manager': 'IN_PROGRESS',
-  'Rejected by Risk Manager': 'CLOSED',
-  'Committee Review 1': 'IN_PROGRESS',
-  'Info Requested by Committee': 'IN_PROGRESS',
-  'Accepted for Mitigation': 'ACCEPTED',
+  Draft: 'DRAFT',
+  'Under Risk Review': 'UNDER_RISK_REVIEW',
+  'Info Requested by Risk Manager': 'INFO_REQUESTED_BY_RISK_MANAGER',
+  'Rejected by Risk Manager': 'REJECTED_BY_RISK_MANAGER',
+  'Committee Review 1': 'COMMITTEE_REVIEW_1',
+  'Info Requested by Committee': 'INFO_REQUESTED_BY_COMMITTEE',
+  'Accepted for Mitigation': 'ACCEPTED_FOR_MITIGATION',
   'Pending Review': 'IN_PROGRESS',
   'Requested Info': 'IN_PROGRESS',
   Approved: 'ACCEPTED',
-  'In Mitigation': 'MITIGATED',
-  'Committee Review 2': 'IN_PROGRESS',
-  'Additional Mitigation Required': 'IN_PROGRESS',
+  'In Mitigation': 'IN_MITIGATION',
+  'Committee Review 2': 'COMMITTEE_REVIEW_2',
+  'Additional Mitigation Required': 'ADDITIONAL_MITIGATION_REQUIRED',
   Overdue: 'IN_PROGRESS',
   Closed: 'CLOSED',
-  'Risk Accepted': 'CLOSED',
+  'Risk Accepted': 'RISK_ACCEPTED',
   Rejected: 'CLOSED',
+}
+
+const API_STATUS_TO_FRONTEND = {
+  DRAFT: 'Draft',
+  UNDER_RISK_REVIEW: 'Under Risk Review',
+  INFO_REQUESTED_BY_RISK_MANAGER: 'Info Requested by Risk Manager',
+  REJECTED_BY_RISK_MANAGER: 'Rejected by Risk Manager',
+  COMMITTEE_REVIEW_1: 'Committee Review 1',
+  INFO_REQUESTED_BY_COMMITTEE: 'Info Requested by Committee',
+  ACCEPTED_FOR_MITIGATION: 'Accepted for Mitigation',
+  COMMITTEE_REVIEW_2: 'Committee Review 2',
+  ADDITIONAL_MITIGATION_REQUIRED: 'Additional Mitigation Required',
+  RISK_ACCEPTED: 'Risk Accepted',
+  IN_MITIGATION: 'In Mitigation',
+  OPEN: 'Draft',
+  IN_PROGRESS: 'Pending Review',
+  MITIGATED: 'In Mitigation',
+  ACCEPTED: 'Approved',
+  CLOSED: 'Closed',
 }
 
 const DECISION_TO_API = {
@@ -71,6 +90,34 @@ const API_TO_MITIGATION = {
   NOT_STARTED: 'Not Started',
   IN_PROGRESS: 'In Progress',
   DONE: 'Done',
+}
+
+const PROBABILITY_TO_API = {
+  Low: 'LOW',
+  Medium: 'MEDIUM',
+  High: 'HIGH',
+}
+
+const API_TO_PROBABILITY = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+}
+
+const IMPACT_TO_API = {
+  Small: 'SMALL',
+  Medium: 'AVERAGE',
+  Strong: 'HUGE',
+  Critical: 'CRITICAL',
+}
+
+const API_TO_IMPACT = {
+  SMALL: 'Small',
+  AVERAGE: 'Medium',
+  MEDIUM: 'Medium',
+  HUGE: 'Strong',
+  STRONG: 'Strong',
+  CRITICAL: 'Critical',
 }
 
 const ACTIVITY_TO_API = {
@@ -136,6 +183,40 @@ function normalizeMitigationStatus(value) {
     return 'Not Started'
   }
   return API_TO_MITIGATION[normalizeEnumToken(value)] || value
+}
+
+function normalizeProbabilityLevel(value) {
+  if (!value) {
+    return ''
+  }
+
+  if (API_TO_PROBABILITY[normalizeEnumToken(value)]) {
+    return API_TO_PROBABILITY[normalizeEnumToken(value)]
+  }
+
+  const normalized = String(value).trim()
+  if (['Low', 'Medium', 'High'].includes(normalized)) {
+    return normalized
+  }
+
+  return ''
+}
+
+function normalizeImpactLevel(value) {
+  if (!value) {
+    return ''
+  }
+
+  if (API_TO_IMPACT[normalizeEnumToken(value)]) {
+    return API_TO_IMPACT[normalizeEnumToken(value)]
+  }
+
+  const normalized = String(value).trim()
+  if (['Small', 'Medium', 'Strong', 'Critical'].includes(normalized)) {
+    return normalized
+  }
+
+  return ''
 }
 
 function buildFallbackId(prefix, fields) {
@@ -215,6 +296,15 @@ async function request(path, { method = 'GET', body, unwrapData = true } = {}) {
   }
 
   return payload
+}
+
+async function requestOptionalList(path) {
+  try {
+    const payload = await request(path)
+    return Array.isArray(payload) ? payload : []
+  } catch {
+    return []
+  }
 }
 
 function createReferenceIndex(rawItems = [], nameNormalizer = null) {
@@ -341,24 +431,16 @@ function deriveRiskStatus(risk, latestDecision, latestWorkflowStatus) {
     return latestWorkflowStatus
   }
 
+  if (API_STATUS_TO_FRONTEND[apiStatus]) {
+    return API_STATUS_TO_FRONTEND[apiStatus]
+  }
+
   if (decision === 'Reject') {
     return 'Rejected'
   }
 
   if (decision === 'Request Info') {
     return 'Requested Info'
-  }
-
-  if (apiStatus === 'CLOSED') {
-    return 'Closed'
-  }
-
-  if (apiStatus === 'MITIGATED') {
-    return 'In Mitigation'
-  }
-
-  if (apiStatus === 'ACCEPTED') {
-    return 'Approved'
   }
 
   const dueDate = risk?.due_date ?? risk?.dueDate
@@ -462,14 +544,29 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
     (activity) => activity?.diff?.mitigationDepartment || activity?.diff?.mitigationDepartmentId,
   )
   const status = deriveRiskStatus(entry, latestDecision, latestWorkflowActivity?.diff?.workflowStatus)
+  const probability = normalizeProbabilityLevel(entry?.probability)
+  const impactLevel = normalizeImpactLevel(entry?.Impact ?? entry?.impact ?? entry?.severity)
+  const possibleLoss = safeNumber(
+    entry?.possible_loss ?? entry?.possibleLoss ?? entry?.impact_most_likely ?? entry?.impactMostLikely,
+    0,
+  )
   const mitigationDepartment = resolveDepartmentName(
     latestMitigationDepartmentActivity?.diff?.mitigationDepartment ??
-      entry?.mitigation_department_name ?? entry?.mitigationDepartment ?? entry?.mitigation_department,
+      entry?.responsible_department_name ??
+      entry?.mitigation_department_name ??
+      entry?.mitigationDepartment ??
+      entry?.mitigation_department ??
+      entry?.responsible_department_id,
     departmentIndex,
   ) ?? ''
   const mitigationDepartmentId =
     latestMitigationDepartmentActivity?.diff?.mitigationDepartmentId ??
-    extractId(entry?.mitigation_department_id ?? entry?.mitigationDepartmentId ?? null)
+    extractId(
+      entry?.responsible_department_id ??
+        entry?.mitigation_department_id ??
+        entry?.mitigationDepartmentId ??
+        null,
+    )
   const computedRisk = recalculateRisk({
     id: riskId,
     title: entry?.title ?? '',
@@ -483,11 +580,8 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
     mitigationDepartment,
     mitigationDepartmentId,
     status,
-    probability: safeNumber(entry?.probability, 0.01),
-    impactMin: safeNumber(entry?.impact_min ?? entry?.impactMin, 0),
-    impactMostLikely: safeNumber(entry?.impact_most_likely ?? entry?.impactMostLikely, 0),
-    impactMax: safeNumber(entry?.impact_max ?? entry?.impactMax, 0),
-    residualScore: safeNumber(entry?.residual_score ?? entry?.residualScore, 0),
+    probability,
+    impactMostLikely: possibleLoss,
     createdAt: entry?.created_at ?? entry?.createdAt ?? new Date().toISOString(),
     updatedAt: entry?.updated_at ?? entry?.updatedAt ?? entry?.created_at ?? new Date().toISOString(),
     dueDate: entry?.due_date ?? entry?.dueDate ?? '',
@@ -502,12 +596,13 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
     existingControlsText: entry?.existing_controls_text ?? entry?.existingControlsText ?? '',
     plannedControlsText: entry?.planned_controls_text ?? entry?.plannedControlsText ?? '',
     audit: activitiesByRisk.get(String(riskId)) || [],
+    severity: impactLevel,
   })
 
   const expectedLoss = safeNumber(entry?.expected_loss ?? entry?.expectedLoss, computedRisk.expectedLoss)
   const inherentScore = safeNumber(entry?.inherent_score ?? entry?.inherentScore, computedRisk.inherentScore)
   const residualScore = safeNumber(entry?.residual_score ?? entry?.residualScore, computedRisk.residualScore)
-  const severity = getImpactLevel(entry?.severity ?? computedRisk.severity, entry?.impact_most_likely ?? entry?.impactMostLikely)
+  const severity = getImpactLevel(impactLevel || entry?.severity || computedRisk.severity)
 
   return {
     ...computedRisk,
@@ -517,24 +612,47 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
     severity,
     status,
     financialAssessmentStatus:
-      safeNumber(entry?.impact_most_likely ?? entry?.impactMostLikely, 0) > 0
+      Boolean(probability || severity || possibleLoss)
         ? 'Assessed'
         : 'Pending Assessment',
   }
 }
 
 export async function loadErmDataset() {
-  const [rawDepartments, rawCategories, rawRisks, rawMitigations, rawDecisions, rawActivities] = await Promise.all([
-    request('/app/api/create/department/'),
-    request('/app/api/create/category/'),
-    request('/app/api/create/risk/'),
-    request('/app/api/create/mitigation/'),
-    request('/app/api/create/decisition/'),
-    request('/app/api/create/riskactivity/'),
+  const rawDepartments = await requestOptionalList('/app/api/create/department/')
+  const rawRisks = await request('/app/api/create/risk/')
+  const [rawCategories, rawMitigations, rawDecisions, rawActivities] = await Promise.all([
+    requestOptionalList('/app/api/create/category/'),
+    requestOptionalList('/app/api/create/mitigation/'),
+    requestOptionalList('/app/api/create/decisition/'),
+    requestOptionalList('/app/api/create/riskactivity/'),
   ])
 
-  const departmentIndex = createReferenceIndex(Array.isArray(rawDepartments) ? rawDepartments : [], normalizeDepartmentName)
-  const categoryIndex = createReferenceIndex(Array.isArray(rawCategories) ? rawCategories : [])
+  const derivedDepartmentReferences = (Array.isArray(rawRisks) ? rawRisks : []).flatMap((entry) => [
+    entry?.department_name,
+    entry?.department,
+    entry?.responsible_department_name,
+    entry?.responsible_department_id,
+    entry?.mitigation_department_name,
+  ])
+  const derivedCategoryReferences = (Array.isArray(rawRisks) ? rawRisks : []).map(
+    (entry) => entry?.category_name ?? entry?.category,
+  )
+
+  const departmentSource =
+    Array.isArray(rawDepartments) && rawDepartments.length ? rawDepartments : derivedDepartmentReferences
+  const categorySource =
+    Array.isArray(rawCategories) && rawCategories.length
+      ? rawCategories
+      : derivedCategoryReferences.filter(Boolean).length
+        ? derivedCategoryReferences
+        : Object.values(LEGACY_API_TO_CATEGORY)
+
+  const departmentIndex = createReferenceIndex(
+    Array.isArray(departmentSource) ? departmentSource : [],
+    normalizeDepartmentName,
+  )
+  const categoryIndex = createReferenceIndex(Array.isArray(categorySource) ? categorySource : [])
 
   const decisionLogs = sortByDateDesc(
     (Array.isArray(rawDecisions) ? rawDecisions : []).map(normalizeDecisionRecord),
@@ -735,6 +853,13 @@ export async function createActivityRecord(riskId, event) {
 }
 
 function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
+  const probabilityLevel = normalizeProbabilityLevel(risk.probability)
+  const impactLevel = normalizeImpactLevel(risk.severity ?? risk.Impact ?? risk.impact)
+  const responsibleDepartmentValue = resolveDepartmentValue(
+    risk.mitigationDepartment ?? risk.department,
+    departmentItems,
+  )
+
   return {
     title: risk.title?.trim() ?? '',
     description: risk.description?.trim() ?? '',
@@ -744,14 +869,11 @@ function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
     responsible: risk.responsible?.trim() ?? '',
     created_by_user_id: risk.createdByUserId ?? '',
     created_by_department_id: risk.createdByDepartmentId ?? risk.department ?? '',
-    status: STATUS_TO_API[risk.status] || risk.status || 'OPEN',
-    probability: safeNumber(risk.probability, 0.01),
-    impact_min: safeNumber(risk.impactMin, 0),
-    impact_most_likely: safeNumber(risk.impactMostLikely, 0),
-    impact_max: safeNumber(risk.impactMax, 0),
-    severity: risk.severity ?? '',
-    inherent_score: safeNumber(risk.inherentScore, 0),
-    residual_score: safeNumber(risk.residualScore, 0),
+    responsible_department_id: responsibleDepartmentValue,
+    status: STATUS_TO_API[risk.status] || risk.status || 'DRAFT',
+    probability: PROBABILITY_TO_API[probabilityLevel] || null,
+    Impact: IMPACT_TO_API[impactLevel] || null,
+    possible_loss: safeNumber(risk.impactMostLikely ?? risk.possibleLoss, 0),
     due_date: toIsoDateTime(risk.dueDate),
     last_reviewed_at: toIsoDateTime(risk.lastReviewedAt),
     tags: Array.isArray(risk.tags) ? risk.tags : [],

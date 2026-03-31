@@ -14,11 +14,23 @@ const probabilityLevelToValue = {
   High: 0.8,
 }
 
+const apiProbabilityToValue = {
+  LOW: probabilityLevelToValue.Low,
+  MEDIUM: probabilityLevelToValue.Medium,
+  HIGH: probabilityLevelToValue.High,
+}
+
 const legacySeverityToImpact = {
   Low: 'Small',
   Medium: 'Medium',
   High: 'Strong',
   Critical: 'Critical',
+  SMALL: 'Small',
+  AVERAGE: 'Medium',
+  MEDIUM: 'Medium',
+  HUGE: 'Strong',
+  STRONG: 'Strong',
+  CRITICAL: 'Critical',
 }
 
 export const severityThresholds = [
@@ -38,6 +50,12 @@ const impactBands = {
 function normalizeProbabilityValue(probability) {
   if (typeof probability === 'string' && probabilityLevels.includes(probability)) {
     return probabilityLevelToValue[probability]
+  }
+  if (typeof probability === 'string') {
+    const normalized = probability.trim().toUpperCase()
+    if (apiProbabilityToValue[normalized]) {
+      return apiProbabilityToValue[normalized]
+    }
   }
   const parsed = Number(probability)
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -68,6 +86,18 @@ export function getProbabilityLevel(probability) {
   if (typeof probability === 'string' && probabilityLevels.includes(probability)) {
     return probability
   }
+  if (typeof probability === 'string') {
+    const normalized = probability.trim().toUpperCase()
+    if (normalized === 'LOW') {
+      return 'Low'
+    }
+    if (normalized === 'MEDIUM') {
+      return 'Medium'
+    }
+    if (normalized === 'HIGH') {
+      return 'High'
+    }
+  }
 
   const normalizedProbability = clampProbability(probability)
   if (!normalizedProbability) {
@@ -84,11 +114,16 @@ export function getProbabilityLevel(probability) {
 
 export function getImpactLevel(value, impactMostLikely = 0) {
   if (typeof value === 'string') {
-    if (impactLevels.includes(value)) {
-      return value
+    const normalized = value.trim()
+    if (impactLevels.includes(normalized)) {
+      return normalized
     }
-    if (legacySeverityToImpact[value]) {
-      return legacySeverityToImpact[value]
+    const apiToken = value.trim().toUpperCase()
+    if (legacySeverityToImpact[apiToken]) {
+      return legacySeverityToImpact[apiToken]
+    }
+    if (legacySeverityToImpact[normalized]) {
+      return legacySeverityToImpact[normalized]
     }
   }
   return ''
@@ -222,7 +257,7 @@ export function buildHeatmapMatrix(risks) {
   const matrix = Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => 0))
   risks.forEach((risk) => {
     const probabilityBand = getProbabilityBand(risk.probability)
-    const impactBand = getImpactBand(risk.impactMostLikely)
+    const impactBand = getImpactBand(risk.severity)
     matrix[probabilityBand - 1][impactBand - 1] += 1
   })
   return matrix

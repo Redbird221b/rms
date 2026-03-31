@@ -31,19 +31,27 @@ const ROLE_ALIASES = {
   administrator: 'admin',
   erm_admin: 'admin',
   rms_admin: 'admin',
+  top_manager: 'admin',
+  'top-manager': 'admin',
+  topmanager: 'admin',
   risk: 'risk',
   risk_manager: 'risk',
   'risk-manager': 'risk',
   risk_department: 'risk',
   risk_analyst: 'risk',
+  risk_analysts: 'risk',
+  risk_controller: 'risk',
+  risk_control: 'risk',
   committee: 'committee',
   committee_member: 'committee',
   'committee-member': 'committee',
   risk_committee: 'committee',
+  committee_secretary: 'committee',
   director: 'director',
   department_director: 'director',
   'department-director': 'director',
   head_of_department: 'director',
+  head_of_unit: 'director',
   employee: 'employee',
   staff: 'employee',
   user: 'employee',
@@ -257,6 +265,17 @@ export function AuthProvider({ children }) {
     }
 
     keycloak.onTokenExpired = async () => {
+      if (!keycloak.refreshToken) {
+        keycloak.clearToken()
+        await loginWithKeycloak({
+          redirectPath:
+            typeof window === 'undefined'
+              ? '/dashboard'
+              : `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        })
+        return
+      }
+
       try {
         await refreshKeycloakToken(30)
         syncState()
