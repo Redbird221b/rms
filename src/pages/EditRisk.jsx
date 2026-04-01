@@ -7,6 +7,7 @@ import EmptyState from '../components/common/EmptyState'
 import PageHeader from '../components/common/PageHeader'
 import RiskForm from '../components/forms/RiskForm'
 import { getRiskRecord } from '../lib/api'
+import { matchesRiskCreator } from '../lib/access'
 
 export default function EditRisk() {
   const { id } = useParams()
@@ -72,7 +73,7 @@ export default function EditRisk() {
   }, [id, isBackendConnected, departmentItems, categoryItems])
 
   const risk = editableRisk ?? fallbackRisk
-  const isDraftAuthor = Boolean(risk) && risk.status === 'Draft' && currentUser?.id === risk.createdByUserId
+  const isDraftAuthor = Boolean(risk) && risk.status === 'Draft' && matchesRiskCreator(currentUser, risk)
 
   if (!isBackendConnected && !backendError) {
     return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>

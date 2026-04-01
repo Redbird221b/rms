@@ -11,7 +11,7 @@ import RiskChatThread from '../components/common/RiskChatThread'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
 import Tabs from '../components/common/Tabs'
-import { isAwaitingDecisionResponse, PERMISSIONS } from '../lib/access'
+import { isAwaitingDecisionResponse, matchesRiskCreator, PERMISSIONS } from '../lib/access'
 import { impactLevels, probabilityLevels, getProbabilityLevel, recalculateRisk } from '../lib/compute'
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
@@ -96,14 +96,14 @@ export default function RiskDetails() {
   const canManageFinancials = hasPermission(PERMISSIONS.EDIT_FINANCIALS)
   const canManageMitigationPlan = hasPermission(PERMISSIONS.MANAGE_MITIGATION_PLAN)
   const canUpdateMitigationProgress = hasPermission(PERMISSIONS.UPDATE_MITIGATION_PROGRESS)
-  const canEditDraft = Boolean(risk) && risk.status === 'Draft' && currentUser?.id === risk.createdByUserId
+  const canEditDraft = Boolean(risk) && risk.status === 'Draft' && matchesRiskCreator(currentUser, risk)
   const responseStatusByCurrentStatus = {
     'Info Requested by Risk Manager': 'Under Risk Review',
     'Info Requested by Committee': 'Committee Review 1',
     'Requested Info': 'Committee Review 1',
   }
   const responseNextStatus = responseStatusByCurrentStatus[risk?.status] ?? ''
-  const canRespondToInfoRequest = Boolean(responseNextStatus) && currentUser?.id === risk?.createdByUserId
+  const canRespondToInfoRequest = Boolean(responseNextStatus) && matchesRiskCreator(currentUser, risk)
   const isActionLocked = isAwaitingDecisionResponse(risk, currentUser?.name)
   const isRiskManagerReview = currentUser?.accessRole === 'risk' && risk?.status === 'Under Risk Review'
   const isCommitteeStage1 = currentUser?.accessRole === 'committee' && risk?.status === 'Committee Review 1'
@@ -918,7 +918,10 @@ export default function RiskDetails() {
             {t('details.responsible')}: {risk.responsible}
           </span>
           <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">
-            {t('details.createdBy')}: {users.find((user) => user.id === risk.createdByUserId)?.name || t('common.unknownRisk')}
+            {t('details.createdBy')}:{' '}
+            {users.find((user) => matchesRiskCreator(user, risk))?.name ||
+              risk.createdByUserId ||
+              t('common.unknownRisk')}
           </span>
           {risk.mitigationDepartment ? (
             <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">

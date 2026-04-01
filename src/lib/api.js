@@ -711,7 +711,21 @@ export async function getRiskRecord(
   riskId,
   { departmentItems = [], categoryItems = [], decisionLogs = [], auditItems = [] } = {},
 ) {
-  const rawRisk = await request(`/app/api/crud/risk/${riskId}/`)
+  let rawRisk
+
+  try {
+    rawRisk = await request(`/app/api/crud/risk/${riskId}/`)
+  } catch (error) {
+    const rawRisks = await request('/app/api/create/risk/')
+    rawRisk = (Array.isArray(rawRisks) ? rawRisks : []).find(
+      (entry) => String(entry?.id ?? entry?.risk_id ?? entry?.riskId ?? '') === String(riskId),
+    )
+
+    if (!rawRisk) {
+      throw error
+    }
+  }
+
   const departmentIndex = createReferenceIndex(departmentItems, normalizeDepartmentName)
   const categoryIndex = createReferenceIndex(categoryItems, normalizeCategoryLabel)
   const decisionsByRisk = groupBy(Array.isArray(decisionLogs) ? decisionLogs : [], 'riskId')
@@ -727,8 +741,16 @@ export async function getRiskRecord(
   })
 }
 
-export async function updateRiskRecord(riskId, risk, departmentItems = [], categoryItems = []) {
-  return request(`/app/api/crud/risk/${riskId}/`, {
+export async function updateRiskRecord(
+  riskId,
+  risk,
+  departmentItems = [],
+  categoryItems = [],
+  { useDraftEndpoint = false } = {},
+) {
+  const path = useDraftEndpoint ? `/app/api/risk/crud/user/${riskId}/` : `/app/api/crud/risk/${riskId}/`
+
+  return request(path, {
     method: 'PATCH',
     body: buildRiskPayload(risk, departmentItems, categoryItems),
   })

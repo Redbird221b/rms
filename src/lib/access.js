@@ -97,6 +97,40 @@ export function hasPermission(user, permission) {
   return getPermissions(user.accessRole).includes(permission)
 }
 
+function normalizeIdentityValue(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+}
+
+export function matchesRiskCreator(user, riskOrCreatorValue) {
+  if (!user) {
+    return false
+  }
+
+  const creatorValue =
+    riskOrCreatorValue && typeof riskOrCreatorValue === 'object'
+      ? riskOrCreatorValue.createdByUserId
+      : riskOrCreatorValue
+
+  const normalizedCreator = normalizeIdentityValue(creatorValue)
+  if (!normalizedCreator) {
+    return false
+  }
+
+  const candidates = [
+    user.username,
+    user.email,
+    user.id,
+    user.backendUserId,
+    user.keycloakSubject,
+  ]
+    .map(normalizeIdentityValue)
+    .filter(Boolean)
+
+  return candidates.includes(normalizedCreator)
+}
+
 export function canAccessPath(user, pathname) {
   if (!user) {
     return false
@@ -134,7 +168,7 @@ export function canViewRisk(user, risk, users) {
   if (hasPermission(user, PERMISSIONS.VIEW_ALL_RISKS)) {
     return true
   }
-  if (risk.createdByUserId === user.id) {
+  if (matchesRiskCreator(user, risk)) {
     return true
   }
   if (risk.responsible && risk.responsible === user.name) {

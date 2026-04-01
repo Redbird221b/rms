@@ -19,7 +19,7 @@ import {
   statuses,
 } from '../../data/seedMeta'
 import { useAuth } from './AuthContext'
-import { canViewRisk } from '../../lib/access'
+import { canViewRisk, matchesRiskCreator } from '../../lib/access'
 import { applyGlobalRiskFilters } from '../../lib/compute'
 import { sameDepartment } from '../../lib/departments'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
@@ -430,7 +430,12 @@ export function ErmProvider({ children }) {
       updatedAt: new Date().toISOString(),
     }
 
-    await updateRiskRecord(riskId, nextRisk, departmentItems, categoryItems)
+    const useDraftEndpoint =
+      currentRisk.status === 'Draft' && matchesRiskCreator(currentUser, currentRisk)
+
+    await updateRiskRecord(riskId, nextRisk, departmentItems, categoryItems, {
+      useDraftEndpoint,
+    })
 
     setRisks((current) =>
       current.map((risk) =>
