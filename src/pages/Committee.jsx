@@ -83,6 +83,8 @@ export default function Committee() {
     updateRisk,
     addToast,
     runWithDeferredSync,
+    isBackendConnected,
+    backendError,
   } = useErm()
   const { currentUser } = useAuth()
   const { t, tr } = useI18n()
@@ -189,6 +191,14 @@ export default function Committee() {
     }
     return decisionLogs.filter((entry) => entry.decisionType === logFilter)
   }, [decisionLogs, logFilter])
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   const logColumns = [
     { key: 'id', label: t('committee.col.id'), sortable: true },

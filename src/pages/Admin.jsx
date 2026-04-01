@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
+import EmptyState from '../components/common/EmptyState'
 import Tabs from '../components/common/Tabs'
 import PageHeader from '../components/common/PageHeader'
 import { severityThresholds } from '../lib/compute'
@@ -232,9 +233,19 @@ export default function Admin() {
     updateCategory,
     deleteCategory,
     addToast,
+    isBackendConnected,
+    backendError,
   } = useErm()
   const { t, tr } = useI18n()
   const [activeTab, setActiveTab] = useState('departments')
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   const tabs = [
     { value: 'departments', label: t('admin.departments') },

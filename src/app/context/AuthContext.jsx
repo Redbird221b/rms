@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { users as seedUsers } from '../../data/seedMeta'
 import {
   canAccessPath,
   getPermissions,
   getRoleConfig,
   hasPermission as hasPermissionForUser,
 } from '../../lib/access'
+import { getCurrentProfile } from '../../lib/api'
 import {
   getKeycloakClient,
   getKeycloakRoles,
@@ -112,7 +112,7 @@ function pickFirstClaim(tokenParsed, keys) {
   return ''
 }
 
-function buildDisplayName(tokenParsed, fallbackUser) {
+function buildDisplayName(tokenParsed) {
   const explicitName = pickFirstClaim(tokenParsed, ['name'])
   if (explicitName) {
     return explicitName
@@ -125,34 +125,10 @@ function buildDisplayName(tokenParsed, fallbackUser) {
     return joinedName
   }
 
-  return (
-    fallbackUser?.name ||
-    pickFirstClaim(tokenParsed, ['preferred_username', 'username', 'email']) ||
-    'User'
-  )
+  return pickFirstClaim(tokenParsed, ['preferred_username', 'username', 'email']) || 'User'
 }
 
-function findSeedUser(tokenParsed) {
-  const candidates = [
-    pickFirstClaim(tokenParsed, ['preferred_username', 'username']),
-    pickFirstClaim(tokenParsed, ['email']),
-    buildDisplayName(tokenParsed, null),
-  ]
-    .map((value) => value.toLowerCase())
-    .filter(Boolean)
-
-  return (
-    seedUsers.find((user) => {
-      const identityPool = [user.username, user.email, user.name]
-        .map((value) => String(value || '').toLowerCase())
-        .filter(Boolean)
-
-      return identityPool.some((value) => candidates.includes(value))
-    }) ?? null
-  )
-}
-
-function resolveAccessRole(roles, fallbackUser) {
+function resolveAccessRole(roles) {
   for (const role of roles) {
     const mappedRole = ROLE_ALIASES[normalizeRoleToken(role)]
     if (mappedRole) {
@@ -160,64 +136,109 @@ function resolveAccessRole(roles, fallbackUser) {
     }
   }
 
-  return fallbackUser?.accessRole ?? 'employee'
+  return 'employee'
 }
 
 function mergeDirectoryUsers(currentUser) {
-  if (!currentUser) {
-    return seedUsers
-  }
-
-  const identityMatchesUser = (user) =>
-    user.id === currentUser.id ||
-    (currentUser.username && user.username === currentUser.username) ||
-    (currentUser.email && user.email === currentUser.email)
-
-  const existingIndex = seedUsers.findIndex(identityMatchesUser)
-  if (existingIndex === -1) {
-    return [...seedUsers, currentUser]
-  }
-
-  return seedUsers.map((user, index) => (index === existingIndex ? { ...user, ...currentUser } : user))
+  return currentUser ? [currentUser] : []
 }
 
 function buildCurrentUser() {
   const keycloak = getKeycloakClient()
   const tokenParsed = keycloak.tokenParsed ?? {}
-  const fallbackUser = findSeedUser(tokenParsed)
   const tokenRoles = getKeycloakRoles()
-  const accessRole = resolveAccessRole(tokenRoles, fallbackUser)
-  const name = buildDisplayName(tokenParsed, fallbackUser)
+  const accessRole = resolveAccessRole(tokenRoles)
+  const name = buildDisplayName(tokenParsed)
   const username =
-    pickFirstClaim(tokenParsed, ['preferred_username', 'username']) ||
-    fallbackUser?.username ||
-    ''
-  const email = pickFirstClaim(tokenParsed, ['email']) || fallbackUser?.email || ''
+    pickFirstClaim(tokenParsed, ['preferred_username', 'username']) || ''
+  const email = pickFirstClaim(tokenParsed, ['email']) || ''
   const role =
     pickFirstClaim(tokenParsed, ['job_title', 'title', 'position']) ||
-    fallbackUser?.role ||
     ROLE_LABELS[accessRole] ||
     'Employee'
   const department =
-    pickFirstClaim(tokenParsed, ['department', 'dept', 'org_unit', 'organization', 'division']) ||
-    fallbackUser?.department ||
-    ''
+    pickFirstClaim(tokenParsed, ['department', 'dept', 'org_unit', 'organization', 'division']) || ''
 
   return {
-    ...(fallbackUser ?? {}),
-    id: fallbackUser?.id ?? tokenParsed.sub ?? `kc:${username || email || 'user'}`,
+    id: tokenParsed.sub ?? `kc:${username || email || 'user'}`,
     name,
     email,
     username,
     role,
     department,
     accessRole,
-    reportsTo: fallbackUser?.reportsTo ?? null,
+    reportsTo: null,
     initials: buildInitials(name, username || email || 'U'),
     keycloakSubject: tokenParsed.sub ?? null,
     keycloakRoles: tokenRoles,
     permissions: getPermissions(accessRole),
     roleConfig: getRoleConfig(accessRole),
+  }
+}
+
+function buildProfileName(profile, fallbackName) {
+  if (!profile || typeof profile !== 'object') {
+    return fallbackName
+  }
+
+  const explicitName =
+    String(profile.full_name || '')
+      .trim()
+  if (explicitName) {
+    return explicitName
+  }
+
+  const joinedName = [profile.first_name, profile.last_name]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+
+  return joinedName || fallbackName
+}
+
+function mergeBackendProfile(currentUser, profile) {
+  if (!profile || typeof profile !== 'object') {
+    return currentUser
+  }
+
+  const departmentName =
+    String(profile.department_name || profile.department?.name || currentUser.department || '').trim()
+  const roleNames = Array.isArray(profile.roles) ? profile.roles.filter(Boolean) : []
+  const groupPaths = Array.isArray(profile.groups) ? profile.groups.filter(Boolean) : []
+  const name = buildProfileName(profile, currentUser.name)
+
+  return {
+    ...currentUser,
+    id: profile.id ?? currentUser.id,
+    backendUserId: profile.id ?? currentUser.backendUserId ?? null,
+    name,
+    email: String(profile.email || currentUser.email || '').trim(),
+    username: String(profile.username || currentUser.username || '').trim(),
+    firstName: String(profile.first_name || '').trim(),
+    lastName: String(profile.last_name || '').trim(),
+    department: departmentName,
+    departmentId: profile.department_id ?? profile.department?.id ?? currentUser.departmentId ?? null,
+    departmentRecord:
+      profile.department && typeof profile.department === 'object'
+        ? profile.department
+        : currentUser.departmentRecord ?? null,
+    groups: groupPaths,
+    keycloakRoles: [...new Set([...(currentUser.keycloakRoles ?? []), ...roleNames])],
+    initials: buildInitials(name, profile.username || currentUser.username || currentUser.email || 'U'),
+  }
+}
+
+async function resolveCurrentUser() {
+  const currentUser = buildCurrentUser()
+  if (!currentUser) {
+    return null
+  }
+
+  try {
+    const profile = await getCurrentProfile()
+    return mergeBackendProfile(currentUser, profile)
+  } catch {
+    return currentUser
   }
 }
 
@@ -233,13 +254,21 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const keycloak = getKeycloakClient()
     let active = true
+    let syncRunId = 0
 
-    const syncState = ({ error = '' } = {}) => {
+    const syncState = async ({ error = '' } = {}) => {
+      const currentRunId = syncRunId + 1
+      syncRunId = currentRunId
+
+      const currentUser = keycloak.authenticated ? await resolveCurrentUser() : null
       if (!active) {
         return
       }
 
-      const currentUser = keycloak.authenticated ? buildCurrentUser() : null
+      if (currentRunId !== syncRunId) {
+        return
+      }
+
       setState({
         isReady: true,
         isAuthenticated: Boolean(currentUser),
@@ -249,19 +278,19 @@ export function AuthProvider({ children }) {
     }
 
     keycloak.onAuthSuccess = () => {
-      syncState()
+      void syncState()
     }
 
     keycloak.onAuthRefreshSuccess = () => {
-      syncState()
+      void syncState()
     }
 
     keycloak.onAuthLogout = () => {
-      syncState()
+      void syncState()
     }
 
     keycloak.onAuthError = () => {
-      syncState({ error: pickAuthText(language).unavailable })
+      void syncState({ error: pickAuthText(language).unavailable })
     }
 
     keycloak.onTokenExpired = async () => {
@@ -278,19 +307,19 @@ export function AuthProvider({ children }) {
 
       try {
         await refreshKeycloakToken(30)
-        syncState()
+        await syncState()
       } catch {
         keycloak.clearToken()
-        syncState({ error: pickAuthText(language).sessionExpired })
+        await syncState({ error: pickAuthText(language).sessionExpired })
       }
     }
 
     const bootstrap = async () => {
       try {
         await initKeycloak()
-        syncState()
+        await syncState()
       } catch {
-        syncState({ error: pickAuthText(language).unavailable })
+        await syncState({ error: pickAuthText(language).unavailable })
       }
     }
 
@@ -320,7 +349,7 @@ export function AuthProvider({ children }) {
       refreshSession: async () => {
         try {
           await initKeycloak()
-          const currentUser = getKeycloakClient().authenticated ? buildCurrentUser() : null
+          const currentUser = getKeycloakClient().authenticated ? await resolveCurrentUser() : null
           setState({
             isReady: true,
             isAuthenticated: Boolean(currentUser),

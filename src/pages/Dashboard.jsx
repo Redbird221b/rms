@@ -7,6 +7,7 @@ import KpiCard from '../components/cards/KpiCard'
 import DepartmentRiskBarChart from '../components/charts/DepartmentRiskBarChart'
 import ExpectedLossTrendChart from '../components/charts/ExpectedLossTrendChart'
 import RiskHeatmap from '../components/charts/RiskHeatmap'
+import EmptyState from '../components/common/EmptyState'
 import PageHeader from '../components/common/PageHeader'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
@@ -15,7 +16,7 @@ import { buildExpectedLossTrend, sortRisksByExpectedLoss } from '../lib/compute'
 import { formatCompactCurrency, formatCurrency } from '../lib/format'
 
 export default function Dashboard() {
-  const { filteredRisks, mitigationActions, queueStatuses, decisionLogs } = useErm()
+  const { filteredRisks, mitigationActions, queueStatuses, decisionLogs, isBackendConnected, backendError } = useErm()
   const { t, tr } = useI18n()
   const [loading] = useState(false)
 
@@ -78,6 +79,14 @@ export default function Dashboard() {
         })),
     [decisionLogs, filteredRisks],
   )
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   return (
     <div className="space-y-4">

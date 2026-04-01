@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../app/context/I18nContext'
+import EmptyState from '../components/common/EmptyState'
 import RiskForm from '../components/forms/RiskForm'
 import PageHeader from '../components/common/PageHeader'
 import { useErm } from '../app/context/ErmContext'
@@ -8,7 +9,7 @@ import { useErm } from '../app/context/ErmContext'
 export default function CreateRisk() {
   const navigate = useNavigate()
   const { t } = useI18n()
-  const { categories, departments, addRisk, addToast } = useErm()
+  const { categories, departments, addRisk, addToast, isBackendConnected, backendError } = useErm()
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (payload) => {
@@ -38,12 +39,29 @@ export default function CreateRisk() {
         title={t('create.title')}
         subtitle={t('create.subtitle')}
       />
-      <RiskForm
-        categories={categories}
-        departments={departments}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-      />
+      {!isBackendConnected && !backendError ? (
+        <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+      ) : null}
+      {!isBackendConnected && backendError ? (
+        <EmptyState
+          title="Backend unavailable"
+          description={backendError || 'Unable to load data from backend.'}
+        />
+      ) : null}
+      {isBackendConnected && (!categories.length || !departments.length) ? (
+        <EmptyState
+          title="Reference data missing"
+          description="Backend did not return departments or categories required for risk creation."
+        />
+      ) : null}
+      {isBackendConnected && categories.length && departments.length ? (
+        <RiskForm
+          categories={categories}
+          departments={departments}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+        />
+      ) : null}
     </div>
   )
 }

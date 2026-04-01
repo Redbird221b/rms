@@ -21,6 +21,7 @@ export default function EditRisk() {
     updateRisk,
     addToast,
     isBackendConnected,
+    backendError,
   } = useErm()
   const { t } = useI18n()
   const [loadingRisk, setLoadingRisk] = useState(false)
@@ -72,6 +73,14 @@ export default function EditRisk() {
 
   const risk = editableRisk ?? fallbackRisk
   const isDraftAuthor = Boolean(risk) && risk.status === 'Draft' && currentUser?.id === risk.createdByUserId
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   if (loadingRisk && !risk) {
     return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading draft...</section>

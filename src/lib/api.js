@@ -298,13 +298,8 @@ async function request(path, { method = 'GET', body, unwrapData = true } = {}) {
   return payload
 }
 
-async function requestOptionalList(path) {
-  try {
-    const payload = await request(path)
-    return Array.isArray(payload) ? payload : []
-  } catch {
-    return []
-  }
+export async function getCurrentProfile() {
+  return request('/app/me/', { unwrapData: false })
 }
 
 function createReferenceIndex(rawItems = [], nameNormalizer = null) {
@@ -374,14 +369,41 @@ function resolveDepartmentValue(value, departmentItems) {
   return match?.id ?? normalized
 }
 
+function normalizeCategoryLabel(value) {
+  if (!value) {
+    return ''
+  }
+
+  if (typeof value === 'object') {
+    return normalizeCategoryLabel(value.name ?? value.title ?? String(extractId(value) ?? ''))
+  }
+
+  const rawValue = String(value).trim()
+  if (!rawValue) {
+    return ''
+  }
+
+  const enumMatch = LEGACY_API_TO_CATEGORY[normalizeEnumToken(rawValue)]
+  if (enumMatch) {
+    return enumMatch
+  }
+
+  const namedMatch = Object.keys(LEGACY_CATEGORY_TO_API).find(
+    (label) => label.toLowerCase() === rawValue.toLowerCase(),
+  )
+
+  return namedMatch ?? rawValue
+}
+
 function normalizeCategoryName(value, categoryIndex) {
   if (!value) {
-    return 'Operational'
+    return ''
   }
   if (typeof value === 'object') {
-    return value.name ?? value.title ?? String(extractId(value) ?? '')
+    return normalizeCategoryLabel(value.name ?? value.title ?? String(extractId(value) ?? ''))
   }
-  return categoryIndex.byId.get(String(value)) || LEGACY_API_TO_CATEGORY[normalizeEnumToken(value)] || String(value)
+
+  return normalizeCategoryLabel(categoryIndex.byId.get(String(value)) || value)
 }
 
 function resolveCategoryValue(value, categoryItems) {
@@ -392,9 +414,9 @@ function resolveCategoryValue(value, categoryItems) {
     return extractId(value) ?? value.name ?? null
   }
 
-  const normalized = String(value).trim()
+  const normalized = normalizeCategoryLabel(value)
   const match = categoryItems.find(
-    (item) => String(item.name).toLowerCase() === normalized.toLowerCase(),
+    (item) => normalizeCategoryLabel(item.name) === normalized,
   )
 
   if (match?.id !== null && match?.id !== undefined) {
@@ -612,47 +634,30 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
     severity,
     status,
     financialAssessmentStatus:
-      Boolean(probability || severity || possibleLoss)
+      probability || severity || possibleLoss
         ? 'Assessed'
         : 'Pending Assessment',
   }
 }
 
 export async function loadErmDataset() {
-  const rawDepartments = await requestOptionalList('/app/api/create/department/')
+  const rawDepartments = await request('/app/api/create/department/')
   const rawRisks = await request('/app/api/create/risk/')
   const [rawCategories, rawMitigations, rawDecisions, rawActivities] = await Promise.all([
-    requestOptionalList('/app/api/create/category/'),
-    requestOptionalList('/app/api/create/mitigation/'),
-    requestOptionalList('/app/api/create/decisition/'),
-    requestOptionalList('/app/api/create/riskactivity/'),
+    request('/app/api/create/category/'),
+    request('/app/api/create/mitigation/'),
+    request('/app/api/create/decisition/'),
+    request('/app/api/create/riskactivity/'),
   ])
-
-  const derivedDepartmentReferences = (Array.isArray(rawRisks) ? rawRisks : []).flatMap((entry) => [
-    entry?.department_name,
-    entry?.department,
-    entry?.responsible_department_name,
-    entry?.responsible_department_id,
-    entry?.mitigation_department_name,
-  ])
-  const derivedCategoryReferences = (Array.isArray(rawRisks) ? rawRisks : []).map(
-    (entry) => entry?.category_name ?? entry?.category,
-  )
-
-  const departmentSource =
-    Array.isArray(rawDepartments) && rawDepartments.length ? rawDepartments : derivedDepartmentReferences
-  const categorySource =
-    Array.isArray(rawCategories) && rawCategories.length
-      ? rawCategories
-      : derivedCategoryReferences.filter(Boolean).length
-        ? derivedCategoryReferences
-        : Object.values(LEGACY_API_TO_CATEGORY)
 
   const departmentIndex = createReferenceIndex(
-    Array.isArray(departmentSource) ? departmentSource : [],
+    Array.isArray(rawDepartments) ? rawDepartments : [],
     normalizeDepartmentName,
   )
-  const categoryIndex = createReferenceIndex(Array.isArray(categorySource) ? categorySource : [])
+  const categoryIndex = createReferenceIndex(
+    Array.isArray(rawCategories) ? rawCategories : [],
+    normalizeCategoryLabel,
+  )
 
   const decisionLogs = sortByDateDesc(
     (Array.isArray(rawDecisions) ? rawDecisions : []).map(normalizeDecisionRecord),
@@ -708,7 +713,7 @@ export async function getRiskRecord(
 ) {
   const rawRisk = await request(`/app/api/crud/risk/${riskId}/`)
   const departmentIndex = createReferenceIndex(departmentItems, normalizeDepartmentName)
-  const categoryIndex = createReferenceIndex(categoryItems)
+  const categoryIndex = createReferenceIndex(categoryItems, normalizeCategoryLabel)
   const decisionsByRisk = groupBy(Array.isArray(decisionLogs) ? decisionLogs : [], 'riskId')
   const activitiesByRisk = new Map([
     [String(riskId), Array.isArray(auditItems) ? auditItems : []],
@@ -867,8 +872,6 @@ function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
     department: resolveDepartmentValue(risk.department, departmentItems),
     owner: risk.owner?.trim() ?? '',
     responsible: risk.responsible?.trim() ?? '',
-    created_by_user_id: risk.createdByUserId ?? '',
-    created_by_department_id: risk.createdByDepartmentId ?? risk.department ?? '',
     responsible_department_id: responsibleDepartmentValue,
     status: STATUS_TO_API[risk.status] || risk.status || 'DRAFT',
     probability: PROBABILITY_TO_API[probabilityLevel] || null,

@@ -15,11 +15,8 @@ import {
   updateRiskRecord,
 } from '../../lib/api'
 import {
-  categories as seedCategories,
-  departments as seedDepartments,
   queueStatuses,
   statuses,
-  users as seedUsers,
 } from '../../data/seedMeta'
 import { useAuth } from './AuthContext'
 import { canViewRisk } from '../../lib/access'
@@ -31,7 +28,6 @@ const STORAGE_KEYS = {
   globalFilters: 'erm_global_filters_v3',
   theme: 'erm_theme_v1',
   notificationReads: 'erm_notification_reads_v1',
-  datasetCache: 'erm_dataset_cache_v1',
 }
 
 const defaultGlobalFilters = {
@@ -45,14 +41,6 @@ const defaultGlobalFilters = {
 
 const severityFilters = ['All', 'Low', 'Small', 'Medium', 'Strong', 'High', 'Critical']
 const ErmContext = createContext(null)
-
-function createSeedReferenceItems(names) {
-  return names.map((name) => ({
-    id: null,
-    name,
-    clientKey: `seed:${String(name).toLowerCase()}`,
-  }))
-}
 
 function sortReferenceItems(items) {
   return [...items].sort((left, right) => left.name.localeCompare(right.name))
@@ -80,7 +68,7 @@ function isValidDateInput(value) {
   return !Number.isNaN(new Date(`${value}T00:00:00`).getTime())
 }
 
-function normalizeGlobalFilters(raw, availableDepartments = seedDepartments) {
+function normalizeGlobalFilters(raw, availableDepartments = []) {
   if (!raw || typeof raw !== 'object') {
     return defaultGlobalFilters
   }
@@ -155,31 +143,13 @@ function getGlobalFiltersStorageKey(userId) {
   return `${STORAGE_KEYS.globalFilters}:${userId ?? 'guest'}`
 }
 
-async function loadSeedDataset() {
-  const module = await import('../../data/seed')
-  return module.seedData
-}
-
-function loadCachedDataset() {
-  return loadFromStorage(STORAGE_KEYS.datasetCache, null)
-}
-
 export function ErmProvider({ children }) {
   const { currentUser, directoryUsers } = useAuth()
-  const initialCachedDataset = currentUser?.id ? loadCachedDataset() : null
-  const [risks, setRisks] = useState(() => initialCachedDataset?.risks ?? [])
-  const [mitigationActions, setMitigationActions] = useState(() => initialCachedDataset?.mitigationActions ?? [])
-  const [decisionLogs, setDecisionLogs] = useState(() => initialCachedDataset?.decisionLogs ?? [])
-  const [departmentItems, setDepartmentItems] = useState(
-    () =>
-      initialCachedDataset?.departmentItems ??
-      createSeedReferenceItems(seedDepartments),
-  )
-  const [categoryItems, setCategoryItems] = useState(
-    () =>
-      initialCachedDataset?.categoryItems ??
-      createSeedReferenceItems(seedCategories),
-  )
+  const [risks, setRisks] = useState([])
+  const [mitigationActions, setMitigationActions] = useState([])
+  const [decisionLogs, setDecisionLogs] = useState([])
+  const [departmentItems, setDepartmentItems] = useState([])
+  const [categoryItems, setCategoryItems] = useState([])
   const [globalFilters, setGlobalFiltersState] = useState(defaultGlobalFilters)
   const [theme, setTheme] = useState(() => loadFromStorage(STORAGE_KEYS.theme, 'light'))
   const [notificationReads, setNotificationReads] = useState(() =>
@@ -189,7 +159,8 @@ export function ErmProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarSide, setSidebarSide] = useState('left')
   const [isBackendConnected, setIsBackendConnected] = useState(false)
-  const fallbackToastShownRef = useRef(false)
+  const [isBackendLoading, setIsBackendLoading] = useState(false)
+  const [backendError, setBackendError] = useState('')
   const syncBatchDepthRef = useRef(0)
   const pendingSyncRef = useRef(false)
   const inflightSyncRef = useRef(null)
@@ -225,51 +196,8 @@ export function ErmProvider({ children }) {
     setGlobalFiltersState((current) =>
       normalizeGlobalFilters(current, dataset.departments),
     )
-    saveToStorage(STORAGE_KEYS.datasetCache, dataset)
     setIsBackendConnected(true)
-    fallbackToastShownRef.current = false
-  }
-
-  const applyCachedDataset = (dataset) => {
-    if (!dataset) {
-      return
-    }
-
-    setRisks(Array.isArray(dataset.risks) ? dataset.risks : [])
-    setMitigationActions(Array.isArray(dataset.mitigationActions) ? dataset.mitigationActions : [])
-    setDecisionLogs(Array.isArray(dataset.decisionLogs) ? dataset.decisionLogs : [])
-    setDepartmentItems(
-      sortReferenceItems(
-        Array.isArray(dataset.departmentItems) && dataset.departmentItems.length
-          ? dataset.departmentItems
-          : createSeedReferenceItems(seedDepartments),
-      ),
-    )
-    setCategoryItems(
-      sortReferenceItems(
-        Array.isArray(dataset.categoryItems) && dataset.categoryItems.length
-          ? dataset.categoryItems
-          : createSeedReferenceItems(seedCategories),
-      ),
-    )
-    setGlobalFiltersState((current) =>
-      normalizeGlobalFilters(
-        current,
-        Array.isArray(dataset.departments) && dataset.departments.length ? dataset.departments : seedDepartments,
-      ),
-    )
-  }
-
-  const applyFallbackDataset = (dataset) => {
-    setRisks(dataset.risks)
-    setMitigationActions(dataset.mitigationActions)
-    setDecisionLogs(dataset.decisionLogs)
-    setDepartmentItems(sortReferenceItems(createSeedReferenceItems(seedDepartments)))
-    setCategoryItems(sortReferenceItems(createSeedReferenceItems(seedCategories)))
-    setGlobalFiltersState((current) =>
-      normalizeGlobalFilters(current, seedDepartments),
-    )
-    setIsBackendConnected(false)
+    setBackendError('')
   }
 
   const syncFromBackend = async ({ force = false } = {}) => {
@@ -278,9 +206,18 @@ export function ErmProvider({ children }) {
     }
 
     const syncPromise = (async () => {
-      const dataset = await loadErmDataset()
-      applyDataset(dataset)
-      return dataset
+      setIsBackendLoading(true)
+      try {
+        const dataset = await loadErmDataset()
+        applyDataset(dataset)
+        return dataset
+      } catch (error) {
+        setIsBackendConnected(false)
+        setBackendError(error instanceof Error ? error.message : 'Unable to load data from backend.')
+        throw error
+      } finally {
+        setIsBackendLoading(false)
+      }
     })()
 
     inflightSyncRef.current = syncPromise
@@ -326,43 +263,39 @@ export function ErmProvider({ children }) {
       setRisks([])
       setMitigationActions([])
       setDecisionLogs([])
-      setDepartmentItems(sortReferenceItems(createSeedReferenceItems(seedDepartments)))
-      setCategoryItems(sortReferenceItems(createSeedReferenceItems(seedCategories)))
+      setDepartmentItems([])
+      setCategoryItems([])
       setIsBackendConnected(false)
+      setIsBackendLoading(false)
+      setBackendError('')
       return () => {
         active = false
       }
     }
 
     const loadInitialData = async () => {
-      const cachedDataset = loadCachedDataset()
-      if (active && cachedDataset) {
-        applyCachedDataset(cachedDataset)
-      }
-
       try {
-        const dataset = await syncFromBackend({ force: true })
+        await syncFromBackend({ force: true })
         if (!active) {
           return
         }
-      } catch {
+      } catch (error) {
         if (!active) {
           return
         }
-        const seedDataset = await loadSeedDataset()
-        if (!active) {
-          return
-        }
-        applyFallbackDataset(seedDataset)
+        setRisks([])
+        setMitigationActions([])
+        setDecisionLogs([])
+        setDepartmentItems([])
+        setCategoryItems([])
+        setGlobalFiltersState(defaultGlobalFilters)
         setIsBackendConnected(false)
-        if (!fallbackToastShownRef.current) {
-          addToast({
-            type: 'error',
-            title: 'Backend unavailable',
-            message: 'Using demo data until the API becomes reachable.',
-          })
-          fallbackToastShownRef.current = true
-        }
+        setBackendError(error instanceof Error ? error.message : 'Unable to load data from backend.')
+        addToast({
+          type: 'error',
+          title: 'Backend unavailable',
+          message: error instanceof Error ? error.message : 'Unable to load data from backend.',
+        })
       }
     }
 
@@ -382,7 +315,7 @@ export function ErmProvider({ children }) {
     setGlobalFiltersState(
       normalizeGlobalFilters(
         loadFromStorage(getGlobalFiltersStorageKey(currentUser.id), defaultGlobalFilters),
-        departments.length ? departments : seedDepartments,
+        departments,
       ),
     )
   }, [currentUser?.id])
@@ -459,9 +392,6 @@ export function ErmProvider({ children }) {
       ...newRisk,
       owner,
       responsible,
-      createdByUserId: currentUser?.id ?? newRisk.createdByUserId ?? '',
-      createdByDepartmentId:
-        currentUser?.department ?? newRisk.createdByDepartmentId ?? newRisk.department ?? '',
       lastReviewedAt: newRisk.lastReviewedAt ?? createdAt,
     }
 
@@ -877,8 +807,10 @@ export function ErmProvider({ children }) {
     categoryItems,
     statuses,
     queueStatuses,
-    users: directoryUsers ?? seedUsers,
+    users: directoryUsers,
     isBackendConnected,
+    isBackendLoading,
+    backendError,
     notifications,
     unreadNotificationCount,
     setGlobalFilters,

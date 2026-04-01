@@ -13,7 +13,7 @@ import { formatCurrency, formatDate } from '../lib/format'
 
 export default function RisksList() {
   const navigate = useNavigate()
-  const { filteredRisks, categories } = useErm()
+  const { filteredRisks, categories, isBackendConnected, backendError } = useErm()
   const { t, tr } = useI18n()
   const [localFilters, setLocalFilters] = useState({
     category: 'All',
@@ -84,6 +84,14 @@ export default function RisksList() {
     ],
     [t, tr],
   )
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   return (
     <div className="space-y-4">

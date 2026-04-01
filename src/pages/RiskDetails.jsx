@@ -49,6 +49,7 @@ export default function RiskDetails() {
     addMitigationAction,
     addToast,
     isBackendConnected,
+    backendError,
     runWithDeferredSync,
   } = useErm()
   const { currentUser, hasPermission } = useAuth()
@@ -317,6 +318,14 @@ export default function RiskDetails() {
       }),
     [financialDraft, risk],
   )
+
+  if (!isBackendConnected && !backendError) {
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+  }
+
+  if (!isBackendConnected && backendError) {
+    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+  }
 
   if (loadingRisk && !risk) {
     return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading risk...</section>
