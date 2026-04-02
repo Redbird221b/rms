@@ -41,6 +41,19 @@ const defaultGlobalFilters = {
 
 const severityFilters = ['All', 'Low', 'Small', 'Medium', 'Strong', 'High', 'Critical']
 const ErmContext = createContext(null)
+const creatorEditableStatusTokens = new Set([
+  'DRAFT',
+  'INFO_REQUESTED_BY_RISK_MANAGER',
+  'INFO_REQUESTED_BY_COMMITTEE',
+  'REQUESTED_INFO',
+])
+
+function normalizeStatusToken(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+}
 
 function sortReferenceItems(items) {
   return [...items].sort((left, right) => left.name.localeCompare(right.name))
@@ -430,11 +443,12 @@ export function ErmProvider({ children }) {
       updatedAt: new Date().toISOString(),
     }
 
-    const useDraftEndpoint =
-      currentRisk.status === 'Draft' && matchesRiskCreator(currentUser, currentRisk)
+    const useCreatorEndpoint =
+      creatorEditableStatusTokens.has(normalizeStatusToken(currentRisk.status)) &&
+      matchesRiskCreator(currentUser, currentRisk)
 
     await updateRiskRecord(riskId, nextRisk, departmentItems, categoryItems, {
-      useDraftEndpoint,
+      useCreatorEndpoint,
     })
 
     setRisks((current) =>

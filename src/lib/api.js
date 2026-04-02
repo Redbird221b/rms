@@ -746,9 +746,9 @@ export async function updateRiskRecord(
   risk,
   departmentItems = [],
   categoryItems = [],
-  { useDraftEndpoint = false } = {},
+  { useCreatorEndpoint = false } = {},
 ) {
-  const path = useDraftEndpoint ? `/app/api/risk/crud/user/${riskId}/` : `/app/api/crud/risk/${riskId}/`
+  const path = useCreatorEndpoint ? `/app/api/risk/crud/user/${riskId}/` : `/app/api/crud/risk/${riskId}/`
 
   return request(path, {
     method: 'PATCH',
