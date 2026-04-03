@@ -449,6 +449,7 @@ export function ErmProvider({ children }) {
 
     await updateRiskRecord(riskId, nextRisk, departmentItems, categoryItems, {
       useCreatorEndpoint,
+      partialUpdates: updates,
     })
 
     setRisks((current) =>

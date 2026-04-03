@@ -758,13 +758,16 @@ export async function updateRiskRecord(
   risk,
   departmentItems = [],
   categoryItems = [],
-  { useCreatorEndpoint = false } = {},
+  { useCreatorEndpoint = false, partialUpdates = null } = {},
 ) {
   const path = useCreatorEndpoint ? `/app/api/risk/crud/user/${riskId}/` : `/app/api/crud/risk/${riskId}/`
+  const body = partialUpdates
+    ? buildPartialRiskPayload(partialUpdates, risk, departmentItems, categoryItems)
+    : buildRiskPayload(risk, departmentItems, categoryItems)
 
   return request(path, {
     method: 'PATCH',
-    body: buildRiskPayload(risk, departmentItems, categoryItems),
+    body,
   })
 }
 
@@ -922,4 +925,79 @@ function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
     existing_controls_text: risk.existingControlsText ?? '',
     planned_controls_text: risk.plannedControlsText ?? '',
   }
+}
+
+function buildPartialRiskPayload(updates, risk, departmentItems = [], categoryItems = []) {
+  const source = { ...(risk || {}), ...(updates || {}) }
+  const body = {}
+
+  if ('title' in updates) {
+    body.title = source.title?.trim() ?? ''
+  }
+  if ('description' in updates) {
+    body.description = source.description?.trim() ?? ''
+  }
+  if ('category' in updates) {
+    body.category = resolveCategoryValue(source.category, categoryItems)
+  }
+  if ('department' in updates) {
+    body.department = resolveDepartmentValue(source.department, departmentItems)
+  }
+  if ('owner' in updates) {
+    body.owner = source.owner?.trim() ?? ''
+  }
+  if ('responsible' in updates) {
+    body.responsible = source.responsible?.trim() ?? ''
+  }
+  if (
+    'mitigationDepartment' in updates ||
+    'department' in updates ||
+    'responsibleDepartmentId' in updates ||
+    'responsible_department_id' in updates
+  ) {
+    body.responsible_department_id = resolveDepartmentValue(
+      source.mitigationDepartment ??
+        source.responsibleDepartmentId ??
+        source.responsible_department_id ??
+        source.department,
+      departmentItems,
+    )
+  }
+  if ('status' in updates) {
+    body.status = STATUS_TO_API[source.status] || source.status || 'DRAFT'
+  }
+  if ('probability' in updates) {
+    const probabilityLevel = normalizeProbabilityLevel(source.probability)
+    body.probability = PROBABILITY_TO_API[probabilityLevel] || null
+  }
+  if ('severity' in updates || 'Impact' in updates || 'impact' in updates) {
+    const impactLevel = normalizeImpactLevel(source.severity ?? source.Impact ?? source.impact)
+    body.Impact = IMPACT_TO_API[impactLevel] || null
+  }
+  if ('impactMostLikely' in updates || 'possibleLoss' in updates || 'possible_loss' in updates) {
+    body.possible_loss = safeNumber(
+      source.impactMostLikely ?? source.possibleLoss ?? source.possible_loss,
+      0,
+    )
+  }
+  if ('dueDate' in updates || 'due_date' in updates) {
+    body.due_date = toIsoDateTime(source.dueDate ?? source.due_date)
+  }
+  if ('lastReviewedAt' in updates || 'last_reviewed_at' in updates) {
+    body.last_reviewed_at = toIsoDateTime(source.lastReviewedAt ?? source.last_reviewed_at)
+  }
+  if ('tags' in updates) {
+    body.tags = Array.isArray(source.tags) ? source.tags : []
+  }
+  if ('attachments' in updates) {
+    body.attachments = Array.isArray(source.attachments) ? source.attachments : []
+  }
+  if ('existingControlsText' in updates || 'existing_controls_text' in updates) {
+    body.existing_controls_text = source.existingControlsText ?? source.existing_controls_text ?? ''
+  }
+  if ('plannedControlsText' in updates || 'planned_controls_text' in updates) {
+    body.planned_controls_text = source.plannedControlsText ?? source.planned_controls_text ?? ''
+  }
+
+  return body
 }
