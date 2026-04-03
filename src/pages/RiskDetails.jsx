@@ -1,3 +1,17 @@
+import {
+  ArrowRight,
+  BadgeDollarSign,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  Circle,
+  ClipboardCheck,
+  ListTodo,
+  MessageSquareText,
+  Target,
+  TrendingUp,
+  UserRound,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../app/context/AuthContext'
@@ -6,18 +20,18 @@ import { useI18n } from '../app/context/I18nContext'
 import ActionModal from '../components/modals/ActionModal'
 import AssignDrawer from '../components/modals/AssignDrawer'
 import EmptyState from '../components/common/EmptyState'
-import PageHeader from '../components/common/PageHeader'
 import RiskChatThread from '../components/common/RiskChatThread'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
 import Tabs from '../components/common/Tabs'
-import { isAwaitingDecisionResponse, matchesRiskCreator, PERMISSIONS } from '../lib/access'
+import { hasAccessRole, isAwaitingDecisionResponse, matchesRiskCreator, matchesUserIdentity, PERMISSIONS } from '../lib/access'
 import { impactLevels, probabilityLevels, getProbabilityLevel, recalculateRisk } from '../lib/compute'
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
 import { getRiskRecord } from '../lib/api'
 
 const IMPORTANT_DECISION_TYPES = new Set(['Approve', 'Reject', 'Accept Residual Risk'])
+const WORKFLOW_RAIL = ['Draft', 'Under Risk Review', 'Committee Review 1', 'In Mitigation', 'Committee Review 2', 'Closed']
 
 function getDecisionStageStatus(workflowStatus) {
   if (['Committee Review 1', 'Info Requested by Risk Manager', 'Rejected by Risk Manager'].includes(workflowStatus)) {
@@ -30,6 +44,41 @@ function getDecisionStageStatus(workflowStatus) {
     return 'Committee Review 2'
   }
   return ''
+}
+
+function getWorkflowRailStatus(status) {
+  if (status === 'Draft') {
+    return 'Draft'
+  }
+  if (['Under Risk Review', 'Info Requested by Risk Manager', 'Rejected by Risk Manager'].includes(status)) {
+    return 'Under Risk Review'
+  }
+  if (['Committee Review 1', 'Info Requested by Committee'].includes(status)) {
+    return 'Committee Review 1'
+  }
+  if (['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required'].includes(status)) {
+    return 'In Mitigation'
+  }
+  if (status === 'Committee Review 2') {
+    return 'Committee Review 2'
+  }
+  if (['Closed', 'Risk Accepted'].includes(status)) {
+    return 'Closed'
+  }
+  return 'Draft'
+}
+
+function getMitigationTone(status) {
+  if (status === 'Approved') {
+    return 'border-[#D5EAD9] bg-[#F4FBF5] dark:border-[#3D6A4C] dark:bg-[#11281A]'
+  }
+  if (status === 'Pending Risk Review') {
+    return 'border-[#D7E2FA] bg-[#F5F8FF] dark:border-[#3C5C97] dark:bg-[#122649]'
+  }
+  if (status === 'In Progress') {
+    return 'border-[#F2D8CA] bg-[#FFF5F0] dark:border-[#7E4A31] dark:bg-[#2E1D18]'
+  }
+  return 'border-slate-200 bg-white dark:border-[#2F4878] dark:bg-[#10203D]'
 }
 
 export default function RiskDetails() {
@@ -64,7 +113,7 @@ export default function RiskDetails() {
 
   const [activeTab, setActiveTab] = useState('overview')
   const [assignOpen, setAssignOpen] = useState(false)
-  const [actionState, setActionState] = useState({ open: false, type: '' })
+  const [actionState, setActionState] = useState({ open: false, type: '', mitigationActionId: null })
   const [sendingChat, setSendingChat] = useState(false)
   const [chatFocusToken, setChatFocusToken] = useState(0)
   const [detailRisk, setDetailRisk] = useState(null)
@@ -96,6 +145,7 @@ export default function RiskDetails() {
   const canManageFinancials = hasPermission(PERMISSIONS.EDIT_FINANCIALS)
   const canManageMitigationPlan = hasPermission(PERMISSIONS.MANAGE_MITIGATION_PLAN)
   const canUpdateMitigationProgress = hasPermission(PERMISSIONS.UPDATE_MITIGATION_PROGRESS)
+  const canReviewMitigationActions = hasPermission(PERMISSIONS.REVIEW_MITIGATION_ACTIONS)
   const canEditDraft = Boolean(risk) && risk.status === 'Draft' && matchesRiskCreator(currentUser, risk)
   const responseStatusByCurrentStatus = {
     'Info Requested by Risk Manager': 'Under Risk Review',
@@ -105,25 +155,24 @@ export default function RiskDetails() {
   const responseNextStatus = responseStatusByCurrentStatus[risk?.status] ?? ''
   const canRespondToInfoRequest = Boolean(responseNextStatus) && matchesRiskCreator(currentUser, risk)
   const isActionLocked = isAwaitingDecisionResponse(risk, currentUser?.name)
-  const isRiskManagerReview = currentUser?.accessRole === 'risk' && risk?.status === 'Under Risk Review'
-  const isCommitteeStage1 = currentUser?.accessRole === 'committee' && risk?.status === 'Committee Review 1'
-  const isCommitteeStage2 = currentUser?.accessRole === 'committee' && risk?.status === 'Committee Review 2'
+  const isRiskManagerReview = hasAccessRole(currentUser, 'risk') && risk?.status === 'Under Risk Review'
+  const isCommitteeStage1 = hasAccessRole(currentUser, 'committee') && risk?.status === 'Committee Review 1'
+  const isCommitteeStage2 = hasAccessRole(currentUser, 'committee') && risk?.status === 'Committee Review 2'
   const isMitigationDepartmentDirector =
-    currentUser?.accessRole === 'director' &&
+    hasAccessRole(currentUser, 'director') &&
     Boolean(risk?.mitigationDepartment) &&
     sameDepartment(currentUser.department, risk.mitigationDepartment)
-  const isMitigationResponsibleEmployee =
-    currentUser?.accessRole === 'employee' &&
-    Boolean(risk?.responsible) &&
-    currentUser.name === risk.responsible
   const mitigationStageStatuses = ['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required']
   const isMitigationStage = mitigationStageStatuses.includes(risk?.status)
   const canAssign = hasPermission(PERMISSIONS.ASSIGN_RESPONSIBLE) && isMitigationDepartmentDirector && isMitigationStage
   const canEditFinancialStage = canManageFinancials && isRiskManagerReview && !isActionLocked
-  const canManageMitigationPlanStage = canManageMitigationPlan && isMitigationDepartmentDirector && isMitigationStage && !isActionLocked
+  const canManageMitigationPlanStage =
+    canManageMitigationPlan &&
+    (isMitigationDepartmentDirector || hasAccessRole(currentUser, 'risk')) &&
+    isMitigationStage &&
+    !isActionLocked
   const canUpdateMitigationProgressStage =
     canUpdateMitigationProgress &&
-    (isMitigationDepartmentDirector || isMitigationResponsibleEmployee) &&
     ['In Mitigation', 'Additional Mitigation Required'].includes(risk?.status) &&
     !isActionLocked
   const canRequestInfoAction = !isActionLocked && (isRiskManagerReview || isCommitteeStage1)
@@ -149,7 +198,7 @@ export default function RiskDetails() {
     () =>
       users.filter(
         (user) =>
-          user.accessRole === 'employee' &&
+          (hasAccessRole(user, 'employee') || hasAccessRole(user, 'director')) &&
           sameDepartment(user.department, risk?.mitigationDepartment),
       ),
     [risk?.mitigationDepartment, users],
@@ -299,16 +348,13 @@ export default function RiskDetails() {
     if (!actions.length) {
       return 0
     }
-    const doneCount = actions.filter((action) => action.status === 'Done').length
-    return Math.round((doneCount / actions.length) * 100)
+    const approvedCount = actions.filter((action) => action.status === 'Approved').length
+    return Math.round((approvedCount / actions.length) * 100)
   }, [actions])
-
-  const canSubmitMitigationReview =
-    (isMitigationDepartmentDirector || isMitigationResponsibleEmployee) &&
-    risk?.status === 'In Mitigation' &&
-    !isActionLocked &&
-    mitigationProgress === 100 &&
-    actions.length > 0
+  const selectedMitigationAction = useMemo(
+    () => actions.find((action) => String(action.id) === String(actionState.mitigationActionId)),
+    [actionState.mitigationActionId, actions],
+  )
 
   const financialPreview = useMemo(
     () =>
@@ -339,6 +385,20 @@ export default function RiskDetails() {
     setActiveTab('audit')
     setChatFocusToken((current) => current + 1)
   }
+
+  const isMitigationActionOwner = (action) => matchesUserIdentity(currentUser, action?.owner)
+
+  const canEditMitigationAction = (action) =>
+    canUpdateMitigationProgressStage &&
+    isMitigationActionOwner(action) &&
+    ['Not Started', 'In Progress'].includes(action?.status)
+
+  const canReviewMitigationAction = (action) =>
+    canReviewMitigationActions &&
+    hasAccessRole(currentUser, 'risk') &&
+    ['In Mitigation', 'Additional Mitigation Required'].includes(risk?.status) &&
+    action?.status === 'Pending Risk Review' &&
+    !isActionLocked
 
   const isInfoRequestReplyTarget = (item) => {
     if (!item || item?.diff?.decisionType !== 'Request Info') {
@@ -417,8 +477,9 @@ export default function RiskDetails() {
   const applyDecision = async (comment) => {
     const now = new Date().toISOString()
     const actor = currentUser?.name ?? 'System'
-    const isRiskManagerDecision = currentUser?.accessRole === 'risk'
-    const isCommitteeDecision = currentUser?.accessRole === 'committee'
+    const trimmedComment = String(comment || '').trim()
+    const isRiskManagerDecision = hasAccessRole(currentUser, 'risk')
+    const isCommitteeDecision = hasAccessRole(currentUser, 'committee')
     const statusByAction = isRiskManagerDecision
       ? {
           Approve: 'Committee Review 1',
@@ -453,6 +514,57 @@ export default function RiskDetails() {
 
     try {
       await runWithDeferredSync(async () => {
+        if (actionState.type === 'Submit Mitigation Action') {
+          if (!selectedMitigationAction) {
+            throw new Error('Mitigation action not found')
+          }
+
+          await updateMitigationAction(
+            selectedMitigationAction.id,
+            {
+              status: 'Pending Risk Review',
+              notes: trimmedComment,
+            },
+            {
+              useStaffEndpoint: true,
+            },
+          )
+          addToast({ title: 'Mitigation action submitted', message: selectedMitigationAction.title, type: 'success' })
+          return
+        }
+
+        if (actionState.type === 'Approve Mitigation Action') {
+          if (!selectedMitigationAction) {
+            throw new Error('Mitigation action not found')
+          }
+
+          await updateMitigationAction(
+            selectedMitigationAction.id,
+            {
+              status: 'Approved',
+              notes: trimmedComment || selectedMitigationAction.notes,
+            },
+          )
+          addToast({ title: 'Mitigation action approved', message: selectedMitigationAction.title, type: 'success' })
+          return
+        }
+
+        if (actionState.type === 'Decline Mitigation Action') {
+          if (!selectedMitigationAction) {
+            throw new Error('Mitigation action not found')
+          }
+
+          await updateMitigationAction(
+            selectedMitigationAction.id,
+            {
+              status: 'In Progress',
+              notes: trimmedComment,
+            },
+          )
+          addToast({ title: 'Mitigation action returned to progress', message: selectedMitigationAction.title, type: 'error' })
+          return
+        }
+
         if (actionState.type === 'Submit Response') {
         await updateRisk(
           risk.id,
@@ -481,34 +593,6 @@ export default function RiskDetails() {
           addToast({ title: t('details.responseSubmitted'), message: risk.id, type: 'success' })
         }
 
-        if (actionState.type === 'Submit Mitigation Review') {
-        await updateRisk(
-          risk.id,
-          {
-            status: 'Committee Review 2',
-            lastReviewedAt: now,
-          },
-          {
-            type: 'review',
-            title: t('details.sentToCommitteeReview'),
-            notes: '',
-            by: actor,
-            diff: {
-              workflowStatus: 'Committee Review 2',
-            },
-          },
-        )
-        await addRiskActivity(risk.id, {
-          type: 'comment',
-          title: t('details.chatCommentTitle'),
-          notes: comment,
-          by: actor,
-          at: new Date(new Date(now).getTime() + 1).toISOString(),
-          diff: { messageKind: 'comment' },
-        })
-          addToast({ title: t('details.sentToCommitteeReview'), message: risk.id, type: 'success' })
-        }
-
         if (actionState.type === 'Approve') {
         const nextMitigationDepartment =
           requiresMitigationDepartment ? selectedDepartment : risk.mitigationDepartment
@@ -516,7 +600,7 @@ export default function RiskDetails() {
           nextMitigationDepartment
             ? users.find(
                 (user) =>
-                  user.accessRole === 'director' &&
+                  hasAccessRole(user, 'director') &&
                   sameDepartment(user.department, nextMitigationDepartment),
               )
             : null
@@ -627,7 +711,7 @@ export default function RiskDetails() {
           nextMitigationDepartment
             ? users.find(
                 (user) =>
-                  user.accessRole === 'director' &&
+                  hasAccessRole(user, 'director') &&
                   sameDepartment(user.department, nextMitigationDepartment),
               )
             : null
@@ -728,7 +812,7 @@ export default function RiskDetails() {
         }
       })
 
-      setActionState({ open: false, type: '' })
+      setActionState({ open: false, type: '', mitigationActionId: null })
     } catch (error) {
       showErrorToast('Unable to save decision', error)
     }
@@ -773,133 +857,314 @@ export default function RiskDetails() {
     }
   }
 
+  const createdByName =
+    users.find((user) => matchesRiskCreator(user, risk))?.name ||
+    risk.createdByUserId ||
+    t('common.unknownRisk')
+
+  const workflowAnchorStatus = getWorkflowRailStatus(risk.status)
+  const workflowAnchorIndex = WORKFLOW_RAIL.indexOf(workflowAnchorStatus)
+  const workflowSteps = WORKFLOW_RAIL.map((step, index) => ({
+    value: step,
+    state: index < workflowAnchorIndex ? 'complete' : index === workflowAnchorIndex ? 'active' : 'upcoming',
+  }))
+
+  const mitigationCounts = {
+    approved: actions.filter((action) => action.status === 'Approved').length,
+    pending: actions.filter((action) => action.status === 'Pending Risk Review').length,
+    inProgress: actions.filter((action) => action.status === 'In Progress').length,
+  }
+
+  const overviewHighlights = [
+    {
+      key: 'expected-loss',
+      label: t('details.expectedLoss'),
+      value: formatCurrency(risk.expectedLoss),
+      icon: BadgeDollarSign,
+      accent:
+        'bg-[linear-gradient(180deg,#FFFFFF_0%,#F5F8FF_100%)] border-[#DCE6F8] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)] dark:border-[#365383]',
+    },
+    {
+      key: 'department',
+      label: t('form.department'),
+      value: tr('department', risk.department),
+      icon: Building2,
+      accent: 'bg-[#FBFCFF] border-[#E7EDF8] dark:bg-[#10203D] dark:border-[#304B78]',
+    },
+    {
+      key: 'responsible',
+      label: t('details.responsible'),
+      value: risk.responsible || '—',
+      icon: UserRound,
+      accent: 'bg-[#FBFCFF] border-[#E7EDF8] dark:bg-[#10203D] dark:border-[#304B78]',
+    },
+    {
+      key: 'last-reviewed',
+      label: actions.length ? t('details.progress', { progress: mitigationProgress }) : t('details.lastReviewed'),
+      value: actions.length ? `${mitigationCounts.approved}/${actions.length}` : formatDate(risk.lastReviewedAt),
+      icon: actions.length ? Target : CalendarDays,
+      accent: 'bg-[#FBFCFF] border-[#E7EDF8] dark:bg-[#10203D] dark:border-[#304B78]',
+    },
+  ]
+
+  const primaryActions = []
+  const secondaryActions = []
+
+  if (canEditDraft) {
+    secondaryActions.push({
+      key: 'edit-draft',
+      label: t('details.editDraft'),
+      onClick: () => navigate(`/risks/${risk.id}/edit`),
+    })
+    primaryActions.push({
+      key: 'submit-draft',
+      label: t('details.submitDraft'),
+      onClick: () => void submitDraftForReview(),
+    })
+  }
+
+  if (canRespondToInfoRequest) {
+    primaryActions.push({
+      key: 'submit-response',
+      label: t('details.submitResponse'),
+      onClick: () => setActionState({ open: true, type: 'Submit Response', mitigationActionId: null }),
+    })
+  }
+
+  if (canAssign) {
+    secondaryActions.push({
+      key: 'assign',
+      label: t('details.assign'),
+      onClick: () => setAssignOpen(true),
+      disabled: isActionLocked,
+    })
+  }
+
+  secondaryActions.push({
+    key: 'comment',
+    label: t('details.comment'),
+    onClick: openChatComposer,
+  })
+
+  if (canRequestInfoAction) {
+    secondaryActions.push({
+      key: 'request-info',
+      label: t('queue.actions.requestInfo'),
+      onClick: () => setActionState({ open: true, type: 'Request Info', mitigationActionId: null }),
+    })
+  }
+
+  if (canAcceptResidualRiskAction) {
+    secondaryActions.push({
+      key: 'accept-residual',
+      label: t('workflow.action.acceptResidualRisk'),
+      onClick: () => setActionState({ open: true, type: 'Accept Residual Risk', mitigationActionId: null }),
+    })
+  }
+
+  if (canRejectRiskManagerAction || canRejectCommitteeStage2Action) {
+    secondaryActions.push({
+      key: 'reject',
+      label: canRejectCommitteeStage2Action ? t('workflow.action.additionalMitigation') : t('details.reject'),
+      onClick: () => setActionState({ open: true, type: 'Reject', mitigationActionId: null }),
+    })
+  }
+
+  if (canApproveRiskManagerAction) {
+    primaryActions.push({
+      key: 'approve-review',
+      label: t('workflow.action.sendToCommittee'),
+      onClick: () => setActionState({ open: true, type: 'Approve', mitigationActionId: null }),
+    })
+  }
+
+  if (canApproveCommitteeStage1Action) {
+    primaryActions.push({
+      key: 'approve-committee-stage-1',
+      label: t('workflow.action.sendToMitigation'),
+      onClick: () => setActionState({ open: true, type: 'Approve', mitigationActionId: null }),
+    })
+  }
+
+  if (canApproveCommitteeStage2Action) {
+    primaryActions.push({
+      key: 'approve-committee-stage-2',
+      label: t('workflow.action.closeRisk'),
+      onClick: () => setActionState({ open: true, type: 'Approve', mitigationActionId: null }),
+    })
+  }
+
   return (
-    <div className={activeTab === 'audit' ? 'risk-details-page--audit' : 'space-y-4'}>
-      <PageHeader
-        title={risk.title}
-        subtitle={`${risk.id} · ${tr('department', risk.department)}`}
-        actions={
-          <>
-            {canEditDraft ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => navigate(`/risks/${risk.id}/edit`)}
-              >
-                {t('details.editDraft')}
-              </button>
-            ) : null}
-            {canEditDraft ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => void submitDraftForReview()}
-              >
-                {t('details.submitDraft')}
-              </button>
-            ) : null}
-            {canRespondToInfoRequest ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setActionState({ open: true, type: 'Submit Response' })}
-              >
-                {t('details.submitResponse')}
-              </button>
-            ) : null}
-            {canAssign ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setAssignOpen(true)}
-                disabled={isActionLocked}
-              >
-                {t('details.assign')}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={openChatComposer}
-            >
-              {t('details.comment')}
-            </button>
-            {canSubmitMitigationReview ? (
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={isActionLocked}
-                onClick={() => setActionState({ open: true, type: 'Submit Mitigation Review' })}
-              >
-                {t('details.submitMitigationReview')}
-              </button>
-            ) : null}
-            {canRequestInfoAction ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActionState({ open: true, type: 'Request Info' })}
-              >
-                {t('queue.actions.requestInfo')}
-              </button>
-            ) : null}
-            {canAcceptResidualRiskAction ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActionState({ open: true, type: 'Accept Residual Risk' })}
-              >
-                {t('workflow.action.acceptResidualRisk')}
-              </button>
-            ) : null}
-            {canRejectRiskManagerAction ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActionState({ open: true, type: 'Reject' })}
-              >
-                {t('details.reject')}
-              </button>
-            ) : null}
-            {canRejectCommitteeStage2Action ? (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActionState({ open: true, type: 'Reject' })}
-              >
-                {t('workflow.action.additionalMitigation')}
-              </button>
-            ) : null}
-            {canApproveRiskManagerAction ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setActionState({ open: true, type: 'Approve' })}
-              >
-                {t('workflow.action.sendToCommittee')}
-              </button>
-            ) : null}
-            {canApproveCommitteeStage1Action ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setActionState({ open: true, type: 'Approve' })}
-              >
-                {t('workflow.action.sendToMitigation')}
-              </button>
-            ) : null}
-            {canApproveCommitteeStage2Action ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setActionState({ open: true, type: 'Approve' })}
-              >
-                {t('workflow.action.closeRisk')}
-              </button>
-            ) : null}
-          </>
-        }
-      />
+    <div className="space-y-5">
+      <section className="panel overflow-hidden">
+        <div className="grid gap-0 xl:grid-cols-[1.45fr,0.9fr]">
+          <div className="border-b border-[#E4EAF4] bg-[radial-gradient(circle_at_top_left,#FFFFFF_0%,#F4F8FF_42%,#EEF3FF_100%)] px-5 py-5 dark:border-[#2F4878] dark:bg-[radial-gradient(circle_at_top_left,#1A315B_0%,#122241_52%,#0E1830_100%)] sm:px-6">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-[#D6E2FF] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
+                  {risk.id}
+                </span>
+                <StatusChip status={risk.status} />
+                <SeverityBadge severity={risk.severity} />
+                <span className="rounded-full border border-[#E2E8F4] bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 dark:border-[#355281] dark:bg-[#13264A] dark:text-slate-200">
+                  {tr('category', risk.category)}
+                </span>
+              </div>
+
+              <h1 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-[2.15rem]">
+                {risk.title}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+                {risk.description}
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {overviewHighlights.map((item) => {
+                  const Icon = item.icon
+
+                  return (
+                    <article
+                      key={item.key}
+                      className={`rounded-[22px] border px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.06)] ${item.accent}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          {item.label}
+                        </p>
+                      </div>
+                      <p className="mt-3 break-words text-base font-semibold text-slate-950 dark:text-white">
+                        {item.value}
+                      </p>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          <aside className="space-y-4 bg-[#F8FAFF] px-5 py-5 dark:bg-[#0F1A31] sm:px-6">
+            <section className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                  Workflow
+                </p>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {workflowSteps.map((step, index) => {
+                  const isComplete = step.state === 'complete'
+                  const isActive = step.state === 'active'
+
+                  return (
+                    <div
+                      key={step.value}
+                      className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
+                        isActive
+                          ? 'border-[#C9D7FF] bg-[#EEF3FF] dark:border-[#4569A8] dark:bg-[#17315E]'
+                          : isComplete
+                            ? 'border-[#D5EAD9] bg-[#F4FBF5] dark:border-[#3D6A4C] dark:bg-[#11281A]'
+                            : 'border-[#E7EDF8] bg-[#FBFCFF] dark:border-[#304B78] dark:bg-[#10203D]'
+                      }`}
+                    >
+                      <span
+                        className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                          isActive
+                            ? 'bg-[#0041B6] text-white'
+                            : isComplete
+                              ? 'bg-[#1B7A39] text-white'
+                              : 'bg-slate-200 text-slate-600 dark:bg-[#21375E] dark:text-slate-300'
+                        }`}
+                      >
+                        {isComplete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-3.5 w-3.5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          {index + 1}
+                        </p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {tr('status', step.value)}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                {t('details.metadata')}
+              </p>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.createdBy')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{createdByName}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.owner')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.owner}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.responsible')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.responsible || '—'}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.mitigationDepartment')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">
+                    {risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '—'}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.created')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{formatDate(risk.createdAt)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="rounded-[26px] bg-[#0F2141] p-5 text-white shadow-[0_18px_42px_rgba(12,25,53,0.35)] dark:bg-[#0C1830]">
+              <div className="flex items-center gap-2">
+                <MessageSquareText className="h-4 w-4 text-[#BFD3FF]" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#BFD3FF]">
+                  Available actions
+                </p>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[#DBE6FF]">
+                {isActionLocked ? t('workflow.awaitingResponse') : t('committee.cardReady')}
+              </p>
+
+              <div className="mt-4 grid gap-2">
+                {primaryActions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className="btn-primary w-full justify-between"
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                  >
+                    <span className="inline-flex w-full items-center justify-between gap-3">
+                      {action.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </button>
+                ))}
+                {secondaryActions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className="btn-secondary w-full justify-between border-white/15 bg-white/8 text-white hover:bg-white/14 hover:text-white dark:border-white/15 dark:bg-white/8 dark:text-white dark:hover:bg-white/14"
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
 
       {isActionLocked ? (
         <section className="panel border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
@@ -907,316 +1172,462 @@ export default function RiskDetails() {
         </section>
       ) : null}
 
-      <section className="panel p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusChip status={risk.status} />
-          <SeverityBadge severity={risk.severity} />
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">
-            {t('details.owner')}: {risk.owner}
-          </span>
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">
-            {t('details.responsible')}: {risk.responsible}
-          </span>
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">
-            {t('details.createdBy')}:{' '}
-            {users.find((user) => matchesRiskCreator(user, risk))?.name ||
-              risk.createdByUserId ||
-              t('common.unknownRisk')}
-          </span>
-          {risk.mitigationDepartment ? (
-            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-[#1A2F59] dark:text-slate-200">
-              {t('details.mitigationDepartment')}: {risk.mitigationDepartment}
-            </span>
-          ) : null}
-        </div>
+      <section className="panel p-2 sm:p-3">
+        <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       </section>
 
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-
       {activeTab === 'overview' ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <article className="panel p-4 lg:col-span-2">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.description')}</h2>
-            <p className="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">{risk.description}</p>
-
-            <h3 className="mt-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.controls')}</h3>
-            <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 p-3 dark:border-[#2F4878]">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('details.existingControls')}</p>
-                <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{risk.existingControlsText}</p>
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr,0.9fr]">
+          <article className="panel overflow-hidden">
+            <div className="border-b border-[#E6ECF5] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FAFE_100%)] px-5 py-4 dark:border-[#304B78] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.description')}</h2>
               </div>
-              <div className="rounded-lg border border-slate-200 p-3 dark:border-[#2F4878]">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('details.plannedControls')}</p>
-                <p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{risk.plannedControlsText}</p>
+            </div>
+
+            <div className="space-y-6 p-5">
+              <p className="max-w-4xl break-words text-sm leading-7 text-slate-600 dark:text-slate-300">
+                {risk.description}
+              </p>
+
+              <div>
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.controls')}</h3>
+                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <section className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      {t('details.existingControls')}
+                    </p>
+                    <p className="mt-3 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      {risk.existingControlsText}
+                    </p>
+                  </section>
+                  <section className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      {t('details.plannedControls')}
+                    </p>
+                    <p className="mt-3 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      {risk.plannedControlsText}
+                    </p>
+                  </section>
+                </div>
               </div>
             </div>
           </article>
 
-          <aside className="panel p-4">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.metadata')}</h2>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500 dark:text-slate-400">{t('form.category')}</dt>
-                <dd className="text-right">{tr('category', risk.category)}</dd>
+          <aside className="space-y-4">
+            <section className="panel p-5">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.metadata')}</h2>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500 dark:text-slate-400">{t('details.created')}</dt>
-                <dd className="text-right">{formatDate(risk.createdAt)}</dd>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('form.category')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{tr('category', risk.category)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.created')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{formatDate(risk.createdAt)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.lastReviewed')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{formatDate(risk.lastReviewedAt)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.owner')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.owner}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">{t('details.responsible')}</dt>
+                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.responsible || '—'}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="panel p-5">
+              <div className="flex items-center gap-2">
+                <ListTodo className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.tags')}</h3>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500 dark:text-slate-400">{t('details.lastReviewed')}</dt>
-                <dd className="text-right">{formatDate(risk.lastReviewedAt)}</dd>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(risk.tags || []).length ? (
+                  (risk.tags || []).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-[#DCE6F8] bg-[#F8FAFE] px-3 py-1 text-xs font-medium text-slate-700 dark:border-[#355281] dark:bg-[#10203D] dark:text-slate-200"
+                    >
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-500 dark:text-slate-400">—</span>
+                )}
               </div>
-            </dl>
-            <div className="mt-4">
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('details.tags')}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {(risk.tags || []).map((tag) => (
-                  <span key={tag} className="rounded-md border border-slate-200 px-2 py-1 text-xs dark:border-[#2F4878]">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
+            </section>
           </aside>
         </section>
       ) : null}
 
       {activeTab === 'financial' ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <article className="panel p-4 lg:col-span-2">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.financial')}</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {canEditFinancialStage ? t('details.financialEditable') : t('details.financialReadOnlyDesc')}
-                </p>
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr,0.9fr]">
+          <article className="panel overflow-hidden">
+            <div className="border-b border-[#E6ECF5] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FAFE_100%)] px-5 py-4 dark:border-[#304B78] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.financial')}</h2>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                    {canEditFinancialStage ? t('details.financialEditable') : t('details.financialReadOnlyDesc')}
+                  </p>
+                </div>
+                <span className="rounded-full border border-[#DCE6F8] bg-white/80 px-3 py-1 text-xs font-medium text-slate-700 dark:border-[#355281] dark:bg-[#10203D] dark:text-slate-200">
+                  {risk.financialAssessmentStatus || t('details.financialPending')}
+                </span>
               </div>
-              <span className="rounded-full bg-[#F7F8FB] px-3 py-1 text-xs font-medium text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
-                {risk.financialAssessmentStatus || t('details.financialPending')}
-              </span>
             </div>
 
-            {!risk.probability && !risk.severity && !risk.impactMostLikely ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-4 dark:border-[#34507F] dark:bg-[#10203D]">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t('details.financialPendingTitle')}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{t('details.financialPendingDesc')}</p>
+            <div className="space-y-5 p-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{t('details.probability')}</p>
+                  <p className="mt-3 text-base font-semibold text-slate-950 dark:text-white">
+                    {tr('severity', getProbabilityLevel(financialDraft.probability)) || '—'}
+                  </p>
+                </div>
+                <div className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{t('details.impactLevel')}</p>
+                  <p className="mt-3 text-base font-semibold text-slate-950 dark:text-white">
+                    {tr('severity', financialDraft.severity) || '—'}
+                  </p>
+                </div>
+                <div className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{t('details.expectedLoss')}</p>
+                  <p className="mt-3 text-base font-semibold text-slate-950 dark:text-white">
+                    {formatCurrency(financialPreview.expectedLoss)}
+                  </p>
+                </div>
               </div>
-            ) : null}
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label>
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.probability')}</span>
-                <select
-                  className="input-field"
-                  value={getProbabilityLevel(financialDraft.probability)}
-                  onChange={(event) =>
-                    setFinancialDraft((current) => ({
-                      ...current,
-                      probability:
-                        event.target.value === 'Low'
-                          ? 0.2
-                          : event.target.value === 'Medium'
-                            ? 0.5
-                            : event.target.value === 'High'
-                              ? 0.8
-                              : 0,
-                    }))}
-                  disabled={!canEditFinancialStage}
-                >
-                  <option value="">{t('modal.selectOption')}</option>
-                  {probabilityLevels.map((level) => (
-                    <option key={level} value={level}>
-                      {tr('severity', level)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.impactLevel')}</span>
-                <select
-                  className="input-field"
-                  value={financialDraft.severity || ''}
-                  onChange={(event) => setFinancialDraft((current) => ({ ...current, severity: event.target.value }))}
-                  disabled={!canEditFinancialStage}
-                >
-                  <option value="">{t('modal.selectOption')}</option>
-                  {impactLevels.map((level) => (
-                    <option key={level} value={level}>
-                      {tr('severity', level)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.impactMostLikely')}</span>
-                <input
-                  type="number"
-                  className="input-field"
-                  value={financialDraft.impactMostLikely}
-                  onChange={(event) => setFinancialDraft((current) => ({ ...current, impactMostLikely: Number(event.target.value) }))}
-                  disabled={!canEditFinancialStage}
-                />
-              </label>
-            </div>
+              {!risk.probability && !risk.severity && !risk.impactMostLikely ? (
+                <div className="rounded-[24px] border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-4 dark:border-[#34507F] dark:bg-[#10203D]">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t('details.financialPendingTitle')}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{t('details.financialPendingDesc')}</p>
+                </div>
+              ) : null}
 
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={!canEditFinancialStage}
-                onClick={async () => {
-                  try {
-                    await updateRisk(
-                      risk.id,
-                      {
-                        ...financialDraft,
-                        impactMin: 0,
-                        impactMax: 0,
-                        residualScore: 0,
-                        lastReviewedAt: new Date().toISOString(),
-                        financialAssessmentStatus: 'Assessed',
-                      },
-                      {
-                        type: 'financial',
-                        title: t('details.financialUpdated'),
-                        notes: 'Probability or impact values changed.',
-                        by: currentUser?.name ?? 'Risk Manager',
-                      },
-                    )
-                    addToast({ title: t('details.financialUpdated'), message: risk.id, type: 'success' })
-                  } catch (error) {
-                    showErrorToast('Unable to update financials', error)
-                  }
-                }}
-              >
-                {canEditFinancialStage ? t('details.saveFinancial') : t('details.financialReadOnly')}
-              </button>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('details.probability')}</span>
+                  <select
+                    className="input-field"
+                    value={getProbabilityLevel(financialDraft.probability)}
+                    onChange={(event) =>
+                      setFinancialDraft((current) => ({
+                        ...current,
+                        probability:
+                          event.target.value === 'Low'
+                            ? 0.2
+                            : event.target.value === 'Medium'
+                              ? 0.5
+                              : event.target.value === 'High'
+                                ? 0.8
+                                : 0,
+                      }))}
+                    disabled={!canEditFinancialStage}
+                  >
+                    <option value="">{t('modal.selectOption')}</option>
+                    {probabilityLevels.map((level) => (
+                      <option key={level} value={level}>
+                        {tr('severity', level)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('details.impactLevel')}</span>
+                  <select
+                    className="input-field"
+                    value={financialDraft.severity || ''}
+                    onChange={(event) => setFinancialDraft((current) => ({ ...current, severity: event.target.value }))}
+                    disabled={!canEditFinancialStage}
+                  >
+                    <option value="">{t('modal.selectOption')}</option>
+                    {impactLevels.map((level) => (
+                      <option key={level} value={level}>
+                        {tr('severity', level)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 md:col-span-2 dark:border-[#304B78] dark:bg-[#10203D]">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('details.impactMostLikely')}</span>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={financialDraft.impactMostLikely}
+                    onChange={(event) => setFinancialDraft((current) => ({ ...current, impactMostLikely: Number(event.target.value) }))}
+                    disabled={!canEditFinancialStage}
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!canEditFinancialStage}
+                  onClick={async () => {
+                    try {
+                      await updateRisk(
+                        risk.id,
+                        {
+                          ...financialDraft,
+                          impactMin: 0,
+                          impactMax: 0,
+                          residualScore: 0,
+                          lastReviewedAt: new Date().toISOString(),
+                          financialAssessmentStatus: 'Assessed',
+                        },
+                        {
+                          type: 'financial',
+                          title: t('details.financialUpdated'),
+                          notes: 'Probability or impact values changed.',
+                          by: currentUser?.name ?? 'Risk Manager',
+                        },
+                      )
+                      addToast({ title: t('details.financialUpdated'), message: risk.id, type: 'success' })
+                    } catch (error) {
+                      showErrorToast('Unable to update financials', error)
+                    }
+                  }}
+                >
+                  {canEditFinancialStage ? t('details.saveFinancial') : t('details.financialReadOnly')}
+                </button>
+              </div>
             </div>
           </article>
 
-          <aside className="panel p-4">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.preview')}</h2>
-            <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(financialPreview.expectedLoss)}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('details.expectedLoss')}</p>
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500 dark:text-slate-400">{t('details.probability')}</span>
-                <span>{tr('severity', getProbabilityLevel(financialPreview.probability)) || '—'}</span>
+          <aside className="space-y-4">
+            <section className="panel overflow-hidden">
+              <div className="bg-[linear-gradient(180deg,#0F2141_0%,#17315E_100%)] px-5 py-5 text-white dark:bg-[linear-gradient(180deg,#0C1830_0%,#13264A_100%)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#BFD3FF]">{t('details.preview')}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight">{formatCurrency(financialPreview.expectedLoss)}</p>
+                <p className="mt-1 text-sm text-[#DBE6FF]">{t('details.expectedLoss')}</p>
               </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500 dark:text-slate-400">{t('details.impactLevel')}</span>
-                <span>{tr('severity', financialPreview.severity) || '—'}</span>
+              <div className="space-y-3 p-5 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{t('details.probability')}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{tr('severity', getProbabilityLevel(financialPreview.probability)) || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{t('details.impactLevel')}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{tr('severity', financialPreview.severity) || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{t('details.inherent')}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{financialPreview.inherentScore || '—'}</span>
+                </div>
               </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-slate-500 dark:text-slate-400">{t('details.inherent')}</span>
-                <span>{financialPreview.inherentScore || '—'}</span>
-              </div>
-            </div>
+            </section>
           </aside>
         </section>
       ) : null}
 
       {activeTab === 'mitigation' ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <article className="panel p-4 lg:col-span-2">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.mitigation')}</h2>
-              <span className="text-xs text-slate-500 dark:text-slate-400">{t('details.progress', { progress: mitigationProgress })}</span>
-            </div>
-            <div className="h-2 rounded-full bg-slate-200 dark:bg-[#1A2F59]">
-              <div className="h-2 rounded-full bg-[#0041B6] transition-all" style={{ width: `${mitigationProgress}%` }} />
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr,0.9fr]">
+          <article className="panel overflow-hidden">
+            <div className="border-b border-[#E6ECF5] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FAFE_100%)] px-5 py-4 dark:border-[#304B78] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.mitigation')}</h2>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                    {t('details.progress', { progress: mitigationProgress })}
+                  </p>
+                </div>
+                <span className="rounded-full border border-[#DCE6F8] bg-white/80 px-3 py-1 text-xs font-medium text-slate-700 dark:border-[#355281] dark:bg-[#10203D] dark:text-slate-200">
+                  {mitigationCounts.approved}/{actions.length || 0}
+                </span>
+              </div>
+
+              <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-[#1A2F59]">
+                <div className="h-2 rounded-full bg-[#0041B6] transition-all" style={{ width: `${mitigationProgress}%` }} />
+              </div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              {actions.map((action) => (
-                <div key={action.id} className="rounded-lg border border-slate-200 p-3 dark:border-[#2F4878]">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{action.title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {t('details.owner')}: {action.owner} · {t('details.due')} {formatDate(action.dueDate)}
-                      </p>
+            <div className="space-y-3 p-5">
+              {actions.length ? (
+                actions.map((action) => (
+                  <article
+                    key={action.id}
+                    className={`rounded-[24px] border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] ${getMitigationTone(action.status)}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-current/10 bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                            {action.id}
+                          </span>
+                          <span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium dark:border-[#2F4878]">
+                            {tr('actionStatus', action.status) || action.status}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 text-base font-semibold text-slate-950 dark:text-white">{action.title}</h3>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
+                            <UserRound className="h-3.5 w-3.5" />
+                            {t('details.owner')}: {action.owner}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {t('details.due')} {formatDate(action.dueDate)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]">
+                        {canEditMitigationAction(action) ? (
+                          <>
+                            <select
+                              className="input-field !py-2"
+                              value={action.status}
+                              onChange={(event) => {
+                                void updateMitigationAction(
+                                  action.id,
+                                  { status: event.target.value },
+                                  { useStaffEndpoint: true },
+                                ).catch((error) => {
+                                  showErrorToast('Unable to update mitigation', error)
+                                })
+                              }}
+                            >
+                              <option value="Not Started">{tr('actionStatus', 'Not Started')}</option>
+                              <option value="In Progress">{tr('actionStatus', 'In Progress')}</option>
+                            </select>
+                            <button
+                              type="button"
+                              className="btn-primary w-full"
+                              onClick={() => setActionState({ open: true, type: 'Submit Mitigation Action', mitigationActionId: action.id })}
+                            >
+                              Send for Risk Review
+                            </button>
+                          </>
+                        ) : null}
+                        {canReviewMitigationAction(action) ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-primary w-full"
+                              onClick={() => setActionState({ open: true, type: 'Approve Mitigation Action', mitigationActionId: action.id })}
+                            >
+                              Approve Action
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary w-full"
+                              onClick={() => setActionState({ open: true, type: 'Decline Mitigation Action', mitigationActionId: action.id })}
+                            >
+                              Decline Action
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
-                    <select
-                      className="input-field !w-full !py-1.5 sm:!w-36"
-                      value={action.status}
-                      disabled={!canUpdateMitigationProgressStage}
-                      onChange={(event) => {
-                        void updateMitigationAction(action.id, { status: event.target.value }).catch((error) => {
-                          showErrorToast('Unable to update mitigation', error)
-                        })
-                      }}
-                    >
-                      <option value="Not Started">{tr('actionStatus', 'Not Started')}</option>
-                      <option value="In Progress">{tr('actionStatus', 'In Progress')}</option>
-                      <option value="Done">{tr('actionStatus', 'Done')}</option>
-                    </select>
-                  </div>
-                  {action.notes ? <p className="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">{action.notes}</p> : null}
+                    {action.notes ? (
+                      <div className="mt-4 rounded-2xl bg-white/70 px-3 py-3 text-sm leading-6 text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                        {action.notes}
+                      </div>
+                    ) : null}
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-6 text-sm leading-6 text-slate-600 dark:border-[#34507F] dark:bg-[#10203D] dark:text-slate-300">
+                  {t('details.mitigationReadOnly')}
                 </div>
-              ))}
+              )}
             </div>
           </article>
 
-          <aside className="panel p-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.addAction')}</h3>
-            <label className="mt-3 block space-y-1">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.actionTitle')}</span>
-              <input className="input-field" value={newAction.title} onChange={(event) => setNewAction((current) => ({ ...current, title: event.target.value }))} disabled={!canManageMitigationPlanStage} />
-            </label>
-            <label className="mt-3 block space-y-1">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.dueDate')}</span>
-              <input type="date" className="input-field" value={newAction.dueDate} onChange={(event) => setNewAction((current) => ({ ...current, dueDate: event.target.value }))} disabled={!canManageMitigationPlanStage} />
-            </label>
-            {canManageMitigationPlanStage ? (
-              <button
-                type="button"
-                className="btn-primary mt-4 w-full"
-                disabled={!risk.responsible}
-                onClick={async () => {
-                  if (!newAction.title || !newAction.dueDate) {
-                    addToast({ type: 'error', title: t('details.actionValidationTitle'), message: t('details.actionValidationDesc') })
-                    return
-                  }
-                  if (!risk.responsible) {
-                    addToast({
-                      type: 'error',
-                      title: t('details.assignResponsibleFirstTitle'),
-                      message: t('details.assignResponsibleFirstDesc'),
-                    })
-                    return
-                  }
-                  try {
-                    await addMitigationAction({
-                      riskId: risk.id,
-                      title: newAction.title,
-                      owner: risk.responsible,
-                      dueDate: newAction.dueDate,
-                      status: 'Not Started',
-                      notes: '',
-                    })
-                    addToast({ title: t('details.actionAdded'), message: risk.id, type: 'success' })
-                    setNewAction({ title: '', dueDate: '' })
-                  } catch (error) {
-                    showErrorToast('Unable to add mitigation action', error)
-                  }
-                }}
-              >
-                {t('details.addMitigationAction')}
-              </button>
-            ) : (
-              <div className="mt-4 rounded-2xl border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-4 text-sm leading-6 text-slate-600 dark:border-[#34507F] dark:bg-[#10203D] dark:text-slate-300">
-                {t('details.mitigationReadOnly')}
+          <aside className="space-y-4">
+            <section className="panel p-5">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.progress', { progress: mitigationProgress })}</h3>
               </div>
-            )}
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-[20px] bg-[#F8FAFE] px-3 py-4 dark:bg-[#10203D]">
+                  <p className="text-2xl font-semibold text-slate-950 dark:text-white">{mitigationCounts.approved}</p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Approved</p>
+                </div>
+                <div className="rounded-[20px] bg-[#F8FAFE] px-3 py-4 dark:bg-[#10203D]">
+                  <p className="text-2xl font-semibold text-slate-950 dark:text-white">{mitigationCounts.pending}</p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Review</p>
+                </div>
+                <div className="rounded-[20px] bg-[#F8FAFE] px-3 py-4 dark:bg-[#10203D]">
+                  <p className="text-2xl font-semibold text-slate-950 dark:text-white">{mitigationCounts.inProgress}</p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Active</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="panel p-5">
+              <div className="flex items-center gap-2">
+                <ListTodo className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.addAction')}</h3>
+              </div>
+              <label className="mt-4 block space-y-1">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.actionTitle')}</span>
+                <input className="input-field" value={newAction.title} onChange={(event) => setNewAction((current) => ({ ...current, title: event.target.value }))} disabled={!canManageMitigationPlanStage} />
+              </label>
+              <label className="mt-3 block space-y-1">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('details.dueDate')}</span>
+                <input type="date" className="input-field" value={newAction.dueDate} onChange={(event) => setNewAction((current) => ({ ...current, dueDate: event.target.value }))} disabled={!canManageMitigationPlanStage} />
+              </label>
+              {canManageMitigationPlanStage ? (
+                <button
+                  type="button"
+                  className="btn-primary mt-4 w-full"
+                  onClick={async () => {
+                    if (!newAction.title || !newAction.dueDate) {
+                      addToast({ type: 'error', title: t('details.actionValidationTitle'), message: t('details.actionValidationDesc') })
+                      return
+                    }
+                    try {
+                      await addMitigationAction({
+                        riskId: risk.id,
+                        title: newAction.title,
+                        owner: risk.responsible || currentUser?.name || '',
+                        dueDate: newAction.dueDate,
+                        status: 'Not Started',
+                        notes: '',
+                      })
+                      addToast({ title: t('details.actionAdded'), message: risk.id, type: 'success' })
+                      setNewAction({ title: '', dueDate: '' })
+                    } catch (error) {
+                      showErrorToast('Unable to add mitigation action', error)
+                    }
+                  }}
+                >
+                  {t('details.addMitigationAction')}
+                </button>
+              ) : (
+                <div className="mt-4 rounded-[24px] border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-4 text-sm leading-6 text-slate-600 dark:border-[#34507F] dark:bg-[#10203D] dark:text-slate-300">
+                  {t('details.mitigationReadOnly')}
+                </div>
+              )}
+            </section>
           </aside>
         </section>
       ) : null}
 
       {activeTab === 'audit' ? (
         <section className="risk-audit-layout">
-          <article className="risk-audit-main">
+          <article className="risk-audit-main panel overflow-hidden p-0">
             <RiskChatThread
               items={risk.audit || []}
               currentUser={currentUser}
@@ -1226,11 +1637,17 @@ export default function RiskDetails() {
               focusToken={chatFocusToken}
             />
           </article>
-          <aside className="panel p-4 risk-decision-panel">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.decisionHistory')}</h2>
-            <ul className="mt-3 space-y-2 risk-decision-list scroll-panel">
+          <aside className="panel p-5 risk-decision-panel">
+            <div className="flex items-center gap-2">
+              <MessageSquareText className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('details.decisionHistory')}</h2>
+            </div>
+            <ul className="mt-4 space-y-3 risk-decision-list scroll-panel">
               {decisions.map((decision) => (
-                <li key={decision.id} className="rounded-xl border border-slate-200 p-3 text-sm dark:border-[#2F4878]">
+                <li
+                  key={decision.id}
+                  className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 text-sm shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-[#304B78] dark:bg-[#10203D]"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 space-y-1">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -1272,7 +1689,7 @@ export default function RiskDetails() {
                       <p className="mt-1 text-right text-slate-900 dark:text-slate-100 sm:text-left">{formatDate(decision.decidedAt)}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(decision.decidedAt)} · {decision.decidedBy}</p>
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{formatDate(decision.decidedAt)} · {decision.decidedBy}</p>
                 </li>
               ))}
               {!decisions.length ? <li className="text-sm text-slate-500 dark:text-slate-400">{t('details.noDecisionHistory')}</li> : null}
@@ -1335,10 +1752,14 @@ export default function RiskDetails() {
       <ActionModal
         open={actionState.open}
         title={
-          actionState.type === 'Submit Response'
+          actionState.type === 'Submit Mitigation Action'
+            ? 'Submit mitigation action'
+            : actionState.type === 'Approve Mitigation Action'
+              ? 'Approve mitigation action'
+            : actionState.type === 'Decline Mitigation Action'
+              ? 'Decline mitigation action'
+            : actionState.type === 'Submit Response'
             ? t('details.submitResponseTitle')
-            : actionState.type === 'Submit Mitigation Review'
-              ? t('details.submitMitigationReviewTitle')
             : actionState.type === 'Approve'
             ? isRiskManagerReview
               ? t('details.sendToCommitteeTitle')
@@ -1356,10 +1777,14 @@ export default function RiskDetails() {
               : t('details.approveTitle')
         }
         description={
-          actionState.type === 'Submit Response'
+          actionState.type === 'Submit Mitigation Action'
+            ? `Describe what was completed for "${selectedMitigationAction?.title || 'this action'}".`
+            : actionState.type === 'Approve Mitigation Action'
+              ? `Approve "${selectedMitigationAction?.title || 'this mitigation action'}" for the next stage.`
+            : actionState.type === 'Decline Mitigation Action'
+              ? `Explain what must be reworked for "${selectedMitigationAction?.title || 'this mitigation action'}".`
+            : actionState.type === 'Submit Response'
             ? t('details.submitResponseDesc')
-            : actionState.type === 'Submit Mitigation Review'
-              ? t('details.submitMitigationReviewDesc')
             : actionState.type === 'Request Info'
               ? t('queue.modal.requestInfoDesc')
             : actionState.type === 'Approve' && isCommitteeStage1
@@ -1369,10 +1794,14 @@ export default function RiskDetails() {
             : risk.id
         }
         confirmLabel={
-          actionState.type === 'Submit Response'
+          actionState.type === 'Submit Mitigation Action'
+            ? 'Send for Risk Review'
+            : actionState.type === 'Approve Mitigation Action'
+              ? 'Approve Action'
+            : actionState.type === 'Decline Mitigation Action'
+              ? 'Decline Action'
+            : actionState.type === 'Submit Response'
             ? t('details.submitResponseConfirm')
-            : actionState.type === 'Submit Mitigation Review'
-              ? t('details.submitMitigationReviewConfirm')
             : actionState.type === 'Approve'
             ? isRiskManagerReview
               ? t('workflow.action.sendToCommittee')
@@ -1389,9 +1818,9 @@ export default function RiskDetails() {
                 : t('details.reject')
               : t('details.approve')
         }
-        requireComment
+        requireComment={actionState.type !== 'Approve Mitigation Action'}
         confirmDisabled={requiresMitigationDepartment && !selectedDepartment}
-        onClose={() => setActionState({ open: false, type: '' })}
+        onClose={() => setActionState({ open: false, type: '', mitigationActionId: null })}
         onConfirm={applyDecision}
       >
         {requiresMitigationDepartment ? (

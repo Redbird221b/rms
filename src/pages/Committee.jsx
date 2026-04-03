@@ -1,5 +1,6 @@
-import { BadgeDollarSign, Building2, Clock3, LockKeyhole } from 'lucide-react'
+import { ArrowRight, BadgeDollarSign, Building2, Clock3, FolderOpenDot, LockKeyhole } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../app/context/AuthContext'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
@@ -13,7 +14,7 @@ import DataTable from '../components/table/DataTable'
 import { isOverdue, sortRisksByExpectedLoss } from '../lib/compute'
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
-import { isAwaitingDecisionResponse } from '../lib/access'
+import { hasAccessRole, isAwaitingDecisionResponse } from '../lib/access'
 
 const logDecisionOptions = ['Approve', 'Reject', 'Request Info', 'Accept Residual Risk']
 const committeeReviewStatuses = ['Committee Review 1', 'Committee Review 2']
@@ -73,6 +74,7 @@ function getAgendaReasonTone(reason, t) {
 }
 
 export default function Committee() {
+  const navigate = useNavigate()
   const {
     risks,
     decisionLogs,
@@ -192,6 +194,8 @@ export default function Committee() {
     return decisionLogs.filter((entry) => entry.decisionType === logFilter)
   }, [decisionLogs, logFilter])
 
+  const focusRisk = visibleAgenda[0] ?? agenda[0] ?? null
+
   if (!isBackendConnected && !backendError) {
     return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
   }
@@ -261,7 +265,7 @@ export default function Committee() {
       mitigationDepartment
         ? users.find(
             (user) =>
-              user.accessRole === 'director' &&
+              hasAccessRole(user, 'director') &&
               sameDepartment(user.department, mitigationDepartment),
           )
         : null
@@ -342,157 +346,292 @@ export default function Committee() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader title={t('committee.title')} subtitle={t('committee.subtitle')} />
 
       <section className="panel overflow-hidden">
-        <div className="border-b border-[#D9D9D9] bg-[linear-gradient(180deg,#FCFDFF_0%,#F6F8FC_100%)] px-4 py-4 dark:border-[#2F4878] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('committee.agenda')}</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('committee.agendaSubtitle')}</p>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:min-w-[560px]">
-              <div className="rounded-2xl border border-[#D9E2F2] bg-white/80 px-3 py-3 dark:border-[#365383] dark:bg-[#10203D]/90">
-                <div className="flex items-center gap-2">
-                  <BadgeDollarSign className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {t('committee.metric.total')}
-                  </span>
+        <div className="grid gap-0 xl:grid-cols-[1.35fr,0.9fr]">
+          <div className="border-b border-[#E4EAF4] bg-[radial-gradient(circle_at_top_left,#FFFFFF_0%,#F3F7FF_48%,#EEF3FF_100%)] px-5 py-5 dark:border-[#2F4878] dark:bg-[radial-gradient(circle_at_top_left,#1A315B_0%,#122241_52%,#0E1830_100%)] sm:px-6">
+            <div className="flex flex-col gap-4">
+              <div className="max-w-2xl">
+                <div className="inline-flex rounded-full border border-[#D6E2FF] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
+                  {t('committee.agenda')}
                 </div>
-                <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{agendaStats.total}</p>
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                  {t('committee.agendaSubtitle')}
+                </h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {t('committee.subtitle')}
+                </p>
               </div>
-              <div className="rounded-2xl border border-[#D9E2F2] bg-white/80 px-3 py-3 dark:border-[#365383] dark:bg-[#10203D]/90">
-                <div className="flex items-center gap-2">
-                  <Clock3 className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {t('committee.metric.stage2')}
-                  </span>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-[22px] border border-[#DCE6F8] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#355281] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
+                  <div className="flex items-center gap-2">
+                    <BadgeDollarSign className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {t('committee.metric.total')}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.total}</p>
                 </div>
-                <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{agendaStats.stageTwo}</p>
-              </div>
-              <div className="rounded-2xl border border-[#D9E2F2] bg-white/80 px-3 py-3 dark:border-[#365383] dark:bg-[#10203D]/90">
-                <div className="flex items-center gap-2">
-                  <LockKeyhole className="h-4 w-4 text-[#DB4300] dark:text-[#FFD1BF]" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {t('committee.metric.locked')}
-                  </span>
+                <div className="rounded-[22px] border border-[#DCE6F8] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#355281] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {t('committee.metric.stage2')}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.stageTwo}</p>
                 </div>
-                <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{agendaStats.locked}</p>
+                <div className="rounded-[22px] border border-[#F2D1C2] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#7B442C] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
+                  <div className="flex items-center gap-2">
+                    <LockKeyhole className="h-4 w-4 text-[#DB4300] dark:text-[#FFD1BF]" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {t('committee.metric.locked')}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.locked}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="p-4">
-          <div className="mb-4">
-            <Tabs tabs={stageTabs} activeTab={activeStageTab} onChange={setActiveStageTab} />
-          </div>
-          {visibleAgenda.length ? (
-            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-              {visibleAgenda.map((risk) => (
-                <article
-                  key={risk.id}
-                  className="overflow-hidden rounded-2xl border border-[#D9E2F2] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] dark:border-[#365383] dark:bg-[#10203D]/84 dark:shadow-[0_16px_36px_rgba(3,8,20,0.28)]"
-                >
-                  <div className="border-b border-[#E4EAF4] bg-[#FBFCFF] px-4 py-3 dark:border-[#2E4A79] dark:bg-[#13264A]/92">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-                            {risk.id}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(risk.reason, t)}`}
-                          >
-                            {risk.reason}
-                          </span>
-                        </div>
-                        <h3 className="mt-2 break-words text-base font-semibold text-slate-900 dark:text-slate-100">
-                          {risk.title}
-                        </h3>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                        <SeverityBadge severity={risk.severity} />
-                        <StatusChip status={risk.status} />
-                      </div>
+
+          <div className="bg-[#F7FAFF] px-5 py-5 dark:bg-[#0F1A31] sm:px-6">
+            <div className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                    {activeStageTab}
+                  </p>
+                  <h3 className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                    {focusRisk ? focusRisk.title : t('committee.agendaEmptyTitle')}
+                  </h3>
+                </div>
+                {focusRisk ? <StatusChip status={focusRisk.status} /> : null}
+              </div>
+
+              {focusRisk ? (
+                <>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <SeverityBadge severity={focusRisk.severity} />
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(focusRisk.reason, t)}`}
+                    >
+                      {focusRisk.reason}
+                    </span>
+                  </div>
+
+                  {focusRisk.description ? (
+                    <p
+                      className="mt-4 overflow-hidden text-sm leading-6 text-slate-600 dark:text-slate-300"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 3,
+                      }}
+                    >
+                      {focusRisk.description}
+                    </p>
+                  ) : null}
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-[#F5F8FF] px-3 py-3 dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.expectedLoss')}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                        {formatCurrency(focusRisk.expectedLoss)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-[#F5F8FF] px-3 py-3 dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.mitigationDepartment')}
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-950 dark:text-white">
+                        {focusRisk.mitigationDepartment
+                          ? tr('department', focusRisk.mitigationDepartment)
+                          : t('committee.noMitigationDepartment')}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="p-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl bg-[#F6F8FC] px-3 py-2.5 dark:bg-[#13284D]">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          {t('committee.sourceDepartment')}
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                          <span className="break-words">{tr('department', risk.department)}</span>
-                        </div>
-                      </div>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => navigate(`/risks/${focusRisk.id}`)}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <FolderOpenDot className="h-4 w-4" />
+                        Open Risk
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={focusRisk.isActionLocked}
+                      onClick={() => {
+                        if (!focusRisk.isActionLocked) {
+                          setActiveRisk(focusRisk)
+                        }
+                      }}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {t('committee.record')}
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  {t('committee.agendaEmptyDesc')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-                      <div className="rounded-xl bg-[#F6F8FC] px-3 py-2.5 dark:bg-[#13284D]">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          {t('committee.mitigationDepartment')}
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                          <span className="break-words">
-                            {risk.mitigationDepartment
-                              ? tr('department', risk.mitigationDepartment)
-                              : t('committee.noMitigationDepartment')}
-                          </span>
-                        </div>
+      <section className="space-y-4">
+        <div className="panel p-2">
+            <Tabs tabs={stageTabs} activeTab={activeStageTab} onChange={setActiveStageTab} />
+          </div>
+        {visibleAgenda.length ? (
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+            {visibleAgenda.map((risk) => (
+              <article
+                key={risk.id}
+                className="overflow-hidden rounded-[28px] border border-[#DCE6F8] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.12)] dark:border-[#355281] dark:bg-[#11213E] dark:shadow-[0_22px_48px_rgba(2,6,23,0.34)]"
+              >
+                <div className="border-b border-[#E7EDF8] bg-[linear-gradient(180deg,#FFFFFF_0%,#F7FAFF_100%)] px-5 py-4 dark:border-[#2E4A79] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[#D5E2FA] bg-white/75 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-[#45629A] dark:bg-[#10203D] dark:text-slate-400">
+                          {risk.id}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(risk.reason, t)}`}
+                        >
+                          {risk.reason}
+                        </span>
                       </div>
+                      <h3 className="mt-3 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                        {risk.title}
+                      </h3>
+                      {risk.description ? (
+                        <p
+                          className="mt-2 overflow-hidden text-sm leading-6 text-slate-600 dark:text-slate-300"
+                          style={{
+                            display: '-webkit-box',
+                            WebkitBoxOrient: 'vertical',
+                            WebkitLineClamp: 2,
+                          }}
+                        >
+                          {risk.description}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                      <SeverityBadge severity={risk.severity} />
+                      <StatusChip status={risk.status} />
+                    </div>
+                  </div>
+                </div>
 
-                      <div className="rounded-xl bg-[#F6F8FC] px-3 py-2.5 dark:bg-[#13284D]">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          {t('committee.expectedLoss')}
-                        </p>
-                        <p className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {formatCurrency(risk.expectedLoss)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-[#F6F8FC] px-3 py-2.5 dark:bg-[#13284D]">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          {t('committee.lastReviewed')}
-                        </p>
-                        <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">
-                          {formatDate(risk.lastReviewedAt)}
-                        </p>
+                <div className="space-y-4 p-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[22px] border border-[#E6ECF6] bg-[#F8FAFE] px-4 py-3 dark:border-[#304B78] dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.sourceDepartment')}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+                        <Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                        <span className="break-words">{tr('department', risk.department)}</span>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-col gap-3 border-t border-[#E6ECF5] pt-4 dark:border-[#2E4A79] sm:flex-row sm:items-center sm:justify-between">
+                    <div className="rounded-[22px] border border-[#E6ECF6] bg-[#F8FAFE] px-4 py-3 dark:border-[#304B78] dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.mitigationDepartment')}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+                        <Building2 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                        <span className="break-words">
+                          {risk.mitigationDepartment
+                            ? tr('department', risk.mitigationDepartment)
+                            : t('committee.noMitigationDepartment')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[22px] border border-[#E6ECF6] bg-[#F8FAFE] px-4 py-3 dark:border-[#304B78] dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.expectedLoss')}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                        {formatCurrency(risk.expectedLoss)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-[22px] border border-[#E6ECF6] bg-[#F8FAFE] px-4 py-3 dark:border-[#304B78] dark:bg-[#10203D]">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('committee.lastReviewed')}
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {formatDate(risk.lastReviewedAt)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[22px] border border-[#E6ECF6] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#13264A]">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {getCommitteeDecisionLabel(getCommitteeDecisionOptions(risk)[0], risk, t, tr)}
                         </p>
-                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                           {risk.isActionLocked ? t('workflow.awaitingResponseShort') : t('committee.cardReady')}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-secondary min-w-[180px]"
-                        disabled={risk.isActionLocked}
-                        onClick={() => {
-                          if (!risk.isActionLocked) {
-                            setActiveRisk(risk)
-                          }
-                        }}
-                      >
-                        {t('committee.record')}
-                      </button>
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => navigate(`/risks/${risk.id}`)}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <FolderOpenDot className="h-4 w-4" />
+                            Open Risk
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          disabled={risk.isActionLocked}
+                          onClick={() => {
+                            if (!risk.isActionLocked) {
+                              setActiveRisk(risk)
+                            }
+                          }}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            {t('committee.record')}
+                            <ArrowRight className="h-4 w-4" />
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title={t('committee.agendaEmptyTitle')} description={t('committee.agendaEmptyDesc')} />
-          )}
-        </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title={t('committee.agendaEmptyTitle')} description={t('committee.agendaEmptyDesc')} />
+        )}
       </section>
 
       <section className="space-y-2">

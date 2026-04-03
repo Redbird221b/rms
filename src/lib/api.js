@@ -83,13 +83,16 @@ const API_TO_DECISION = {
 const MITIGATION_TO_API = {
   'Not Started': 'NOT_STARTED',
   'In Progress': 'IN_PROGRESS',
-  Done: 'DONE',
+  'Pending Risk Review': 'PENDING_RISK_REVIEW',
+  Approved: 'APPROVED',
 }
 
 const API_TO_MITIGATION = {
   NOT_STARTED: 'Not Started',
   IN_PROGRESS: 'In Progress',
-  DONE: 'Done',
+  PENDING_RISK_REVIEW: 'Pending Risk Review',
+  APPROVED: 'Approved',
+  DONE: 'Pending Risk Review',
 }
 
 const PROBABILITY_TO_API = {
@@ -844,8 +847,12 @@ export async function createMitigationRecord(entry) {
   })
 }
 
-export async function updateMitigationRecord(actionId, entry) {
-  return request(`/app/api/crud/mitigation/${actionId}/`, {
+export async function updateMitigationRecord(actionId, entry, { useStaffEndpoint = false } = {}) {
+  const path = useStaffEndpoint
+    ? `/app/api/crud/mitigation/staff/${actionId}/`
+    : `/app/api/crud/mitigation/${actionId}/`
+
+  return request(path, {
     method: 'PATCH',
     body: {
       risk: entry.riskId,

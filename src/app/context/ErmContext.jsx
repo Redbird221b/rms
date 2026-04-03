@@ -532,32 +532,11 @@ export function ErmProvider({ children }) {
         : nextAction
 
     setMitigationActions((current) => sortItemsByDateDesc([...current, persistedAction], 'updatedAt'))
-
-    const currentRisk = risks.find((risk) => String(risk.id) === String(action.riskId))
-    if (currentRisk && ['Accepted for Mitigation', 'Additional Mitigation Required'].includes(currentRisk.status)) {
-      await updateRisk(
-        currentRisk.id,
-        {
-          status: 'In Mitigation',
-          lastReviewedAt: new Date().toISOString(),
-        },
-        {
-          type: 'review',
-          title: 'Mitigation started',
-          notes: 'The first mitigation action was created.',
-          by: currentUser?.name ?? 'System',
-          diff: {
-            workflowStatus: 'In Mitigation',
-          },
-        },
-      )
-      return true
-    }
-
+    await scheduleBackendSync()
     return true
   }
 
-  const updateMitigationAction = async (actionId, patch) => {
+  const updateMitigationAction = async (actionId, patch, { useStaffEndpoint = false } = {}) => {
     const currentAction = mitigationActions.find((action) => action.id === actionId)
     if (!currentAction) {
       throw new Error('Mitigation action not found')
@@ -566,7 +545,7 @@ export function ErmProvider({ children }) {
     await updateMitigationRecord(actionId, {
       ...currentAction,
       ...patch,
-    })
+    }, { useStaffEndpoint })
 
     setMitigationActions((current) =>
       sortItemsByDateDesc(
@@ -583,27 +562,7 @@ export function ErmProvider({ children }) {
       ),
     )
 
-    const currentRisk = risks.find((risk) => String(risk.id) === String(currentAction.riskId))
-    if (currentRisk?.status === 'Additional Mitigation Required') {
-      await updateRisk(
-        currentRisk.id,
-        {
-          status: 'In Mitigation',
-          lastReviewedAt: new Date().toISOString(),
-        },
-        {
-          type: 'review',
-          title: 'Mitigation restarted',
-          notes: 'Mitigation work resumed after the committee requested additional mitigation.',
-          by: currentUser?.name ?? 'System',
-          diff: {
-            workflowStatus: 'In Mitigation',
-          },
-        },
-      )
-      return true
-    }
-
+    await scheduleBackendSync()
     return true
   }
 

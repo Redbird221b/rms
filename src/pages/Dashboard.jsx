@@ -25,7 +25,7 @@ export default function Dashboard() {
     const openRisks = filteredRisks.filter((risk) => !['Closed', 'Rejected'].includes(risk.status)).length
     const pendingReviews = filteredRisks.filter((risk) => queueStatuses.includes(risk.status)).length
     const overdueActions = mitigationActions.filter((action) => {
-      if (action.status === 'Done') {
+      if (['Pending Risk Review', 'Approved'].includes(action.status)) {
         return false
       }
       const dueDate = new Date(action.dueDate)
@@ -55,7 +55,7 @@ export default function Dashboard() {
   const overdueActionItems = useMemo(() => {
     return mitigationActions
       .filter((action) => {
-        if (action.status === 'Done') {
+        if (['Pending Risk Review', 'Approved'].includes(action.status)) {
           return false
         }
         const dueDate = new Date(action.dueDate).getTime()

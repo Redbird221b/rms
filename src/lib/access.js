@@ -7,6 +7,7 @@ export const PERMISSIONS = {
   EDIT_RISK: 'EDIT_RISK',
   MANAGE_MITIGATION_PLAN: 'MANAGE_MITIGATION_PLAN',
   UPDATE_MITIGATION_PROGRESS: 'UPDATE_MITIGATION_PROGRESS',
+  REVIEW_MITIGATION_ACTIONS: 'REVIEW_MITIGATION_ACTIONS',
   EDIT_FINANCIALS: 'EDIT_FINANCIALS',
   ASSIGN_RESPONSIBLE: 'ASSIGN_RESPONSIBLE',
   REVIEW_QUEUE_ACTIONS: 'REVIEW_QUEUE_ACTIONS',
@@ -14,14 +15,20 @@ export const PERMISSIONS = {
   MANAGE_REFERENCE_DATA: 'MANAGE_REFERENCE_DATA',
   VIEW_AUDIT: 'VIEW_AUDIT',
   VIEW_ALL_RISKS: 'VIEW_ALL_RISKS',
-  VIEW_HIERARCHY_RISKS: 'VIEW_HIERARCHY_RISKS',
 } 
 
 export const ROLE_CONFIG = {
   admin: {
     labelKey: 'auth.role.admin',
     badgeTone: 'blue',
-    permissions: Object.values(PERMISSIONS),
+    permissions: [
+      PERMISSIONS.VIEW_DASHBOARD,
+      PERMISSIONS.VIEW_RISKS,
+      PERMISSIONS.CREATE_RISK,
+      PERMISSIONS.MANAGE_REFERENCE_DATA,
+      PERMISSIONS.VIEW_AUDIT,
+      PERMISSIONS.VIEW_ALL_RISKS,
+    ],
   },
   risk: {
     labelKey: 'auth.role.risk',
@@ -31,10 +38,11 @@ export const ROLE_CONFIG = {
       PERMISSIONS.VIEW_RISKS,
       PERMISSIONS.CREATE_RISK,
       PERMISSIONS.EDIT_FINANCIALS,
+      PERMISSIONS.MANAGE_MITIGATION_PLAN,
+      PERMISSIONS.REVIEW_MITIGATION_ACTIONS,
       PERMISSIONS.REVIEW_QUEUE_ACTIONS,
       PERMISSIONS.VIEW_AUDIT,
       PERMISSIONS.VIEW_ALL_RISKS,
-      PERMISSIONS.VIEW_HIERARCHY_RISKS,
     ],
   },
   committee: {
@@ -43,6 +51,7 @@ export const ROLE_CONFIG = {
     permissions: [
       PERMISSIONS.VIEW_DASHBOARD,
       PERMISSIONS.VIEW_RISKS,
+      PERMISSIONS.CREATE_RISK,
       PERMISSIONS.COMMITTEE_DECIDE,
       PERMISSIONS.VIEW_AUDIT,
       PERMISSIONS.VIEW_ALL_RISKS,
@@ -58,7 +67,6 @@ export const ROLE_CONFIG = {
       PERMISSIONS.MANAGE_MITIGATION_PLAN,
       PERMISSIONS.UPDATE_MITIGATION_PROGRESS,
       PERMISSIONS.ASSIGN_RESPONSIBLE,
-      PERMISSIONS.VIEW_HIERARCHY_RISKS,
     ],
   },
   employee: {
@@ -94,7 +102,27 @@ export function hasPermission(user, permission) {
   if (!user) {
     return false
   }
+  if (Array.isArray(user.permissions) && user.permissions.length) {
+    return user.permissions.includes(permission)
+  }
   return getPermissions(user.accessRole).includes(permission)
+}
+
+export function hasAccessRole(user, role) {
+  if (!user) {
+    return false
+  }
+
+  const normalizedRole = String(role || '').trim()
+  if (!normalizedRole) {
+    return false
+  }
+
+  if (Array.isArray(user.accessRoles) && user.accessRoles.length) {
+    return user.accessRoles.includes(normalizedRole)
+  }
+
+  return user.accessRole === normalizedRole
 }
 
 function normalizeIdentityValue(value) {
@@ -103,18 +131,8 @@ function normalizeIdentityValue(value) {
     .toLowerCase()
 }
 
-export function matchesRiskCreator(user, riskOrCreatorValue) {
+export function matchesUserIdentity(user, value) {
   if (!user) {
-    return false
-  }
-
-  const creatorValue =
-    riskOrCreatorValue && typeof riskOrCreatorValue === 'object'
-      ? riskOrCreatorValue.createdByUserId
-      : riskOrCreatorValue
-
-  const normalizedCreator = normalizeIdentityValue(creatorValue)
-  if (!normalizedCreator) {
     return false
   }
 
@@ -128,7 +146,16 @@ export function matchesRiskCreator(user, riskOrCreatorValue) {
     .map(normalizeIdentityValue)
     .filter(Boolean)
 
-  return candidates.includes(normalizedCreator)
+  return candidates.includes(normalizeIdentityValue(value))
+}
+
+export function matchesRiskCreator(user, riskOrCreatorValue) {
+  const creatorValue =
+    riskOrCreatorValue && typeof riskOrCreatorValue === 'object'
+      ? riskOrCreatorValue.createdByUserId
+      : riskOrCreatorValue
+
+  return matchesUserIdentity(user, creatorValue)
 }
 
 export function canAccessPath(user, pathname) {
@@ -171,21 +198,15 @@ export function canViewRisk(user, risk, users) {
   if (matchesRiskCreator(user, risk)) {
     return true
   }
-  if (risk.responsible && risk.responsible === user.name) {
+  if (risk.responsible && matchesUserIdentity(user, risk.responsible)) {
     return true
   }
   if (
     risk.mitigationDepartment &&
     sameDepartment(risk.mitigationDepartment, user.department) &&
-    user.accessRole === 'director'
+    hasAccessRole(user, 'director')
   ) {
     return true
-  }
-  if (hasPermission(user, PERMISSIONS.VIEW_HIERARCHY_RISKS)) {
-    const managerChain = getManagerChain(users, risk.createdByUserId)
-    if (managerChain.includes(user.id)) {
-      return true
-    }
   }
   return false
 }

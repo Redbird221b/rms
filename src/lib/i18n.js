@@ -1428,6 +1428,8 @@ const enumDictionary = {
   actionStatus: {
     'Not Started': { en: 'Not Started', ru: 'Не начато', uz: 'Boshlanmagan' },
     'In Progress': { en: 'In Progress', ru: 'В работе', uz: 'Jarayonda' },
+    'Pending Risk Review': { en: 'Pending Risk Review', ru: 'На проверке риск-отдела', uz: 'Risk bo‘limi tekshiruvida' },
+    Approved: { en: 'Approved', ru: 'Подтверждено', uz: 'Tasdiqlandi' },
     Done: { en: 'Done', ru: 'Готово', uz: 'Bajarilgan' },
   },
 }

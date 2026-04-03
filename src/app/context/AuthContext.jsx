@@ -19,11 +19,11 @@ import { useI18n } from './I18nContext'
 const AuthContext = createContext(null)
 
 const ROLE_LABELS = {
-  admin: 'Administrator',
-  risk: 'Risk Analyst',
-  committee: 'Committee Member',
+  admin: 'Super Admin',
+  risk: 'Risk Department',
+  committee: 'Risk Committee',
   director: 'Department Director',
-  employee: 'Employee',
+  employee: 'Staff',
 }
 
 const ROLE_ALIASES = {
@@ -31,12 +31,18 @@ const ROLE_ALIASES = {
   administrator: 'admin',
   erm_admin: 'admin',
   rms_admin: 'admin',
+  super_admin: 'admin',
+  'super-admin': 'admin',
   top_manager: 'admin',
   'top-manager': 'admin',
   topmanager: 'admin',
   risk: 'risk',
+  risk_dept: 'risk',
+  'risk-dept': 'risk',
   risk_manager: 'risk',
   'risk-manager': 'risk',
+  risk_management: 'risk',
+  'risk-management': 'risk',
   risk_department: 'risk',
   risk_analyst: 'risk',
   risk_analysts: 'risk',
@@ -46,8 +52,11 @@ const ROLE_ALIASES = {
   committee_member: 'committee',
   'committee-member': 'committee',
   risk_committee: 'committee',
+  'risk-committee': 'committee',
   committee_secretary: 'committee',
   director: 'director',
+  dept_director: 'director',
+  'dept-director': 'director',
   department_director: 'director',
   'department-director': 'director',
   head_of_department: 'director',
@@ -82,6 +91,8 @@ function normalizeRoleToken(role) {
     .toLowerCase()
     .replace(/\s+/g, '_')
 }
+
+const ROLE_PRIORITY = ['admin', 'committee', 'risk', 'director', 'employee']
 
 function buildInitials(name, fallback) {
   const parts = String(name || '')
@@ -128,15 +139,34 @@ function buildDisplayName(tokenParsed) {
   return pickFirstClaim(tokenParsed, ['preferred_username', 'username', 'email']) || 'User'
 }
 
-function resolveAccessRole(roles) {
-  for (const role of roles) {
-    const mappedRole = ROLE_ALIASES[normalizeRoleToken(role)]
-    if (mappedRole) {
-      return mappedRole
+function resolveAccessRoles(roles) {
+  const mappedRoles = [
+    ...new Set(
+      roles
+        .map((role) => ROLE_ALIASES[normalizeRoleToken(role)])
+        .filter(Boolean),
+    ),
+  ]
+
+  return mappedRoles.length ? mappedRoles : ['employee']
+}
+
+function resolvePrimaryAccessRole(accessRoles) {
+  for (const role of ROLE_PRIORITY) {
+    if (accessRoles.includes(role)) {
+      return role
     }
   }
 
   return 'employee'
+}
+
+function buildPermissions(accessRoles) {
+  return [
+    ...new Set(
+      accessRoles.flatMap((role) => getPermissions(role)),
+    ),
+  ]
 }
 
 function mergeDirectoryUsers(currentUser) {
@@ -147,7 +177,8 @@ function buildCurrentUser() {
   const keycloak = getKeycloakClient()
   const tokenParsed = keycloak.tokenParsed ?? {}
   const tokenRoles = getKeycloakRoles()
-  const accessRole = resolveAccessRole(tokenRoles)
+  const accessRoles = resolveAccessRoles(tokenRoles)
+  const accessRole = resolvePrimaryAccessRole(accessRoles)
   const name = buildDisplayName(tokenParsed)
   const username =
     pickFirstClaim(tokenParsed, ['preferred_username', 'username']) || ''
@@ -167,11 +198,12 @@ function buildCurrentUser() {
     role,
     department,
     accessRole,
+    accessRoles,
     reportsTo: null,
     initials: buildInitials(name, username || email || 'U'),
     keycloakSubject: tokenParsed.sub ?? null,
     keycloakRoles: tokenRoles,
-    permissions: getPermissions(accessRole),
+    permissions: buildPermissions(accessRoles),
     roleConfig: getRoleConfig(accessRole),
   }
 }
@@ -225,6 +257,7 @@ function mergeBackendProfile(currentUser, profile) {
     groups: groupPaths,
     keycloakRoles: [...new Set([...(currentUser.keycloakRoles ?? []), ...roleNames])],
     initials: buildInitials(name, profile.username || currentUser.username || currentUser.email || 'U'),
+    permissions: buildPermissions(currentUser.accessRoles ?? [currentUser.accessRole]),
   }
 }
 
