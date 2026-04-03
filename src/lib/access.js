@@ -52,6 +52,7 @@ export const ROLE_CONFIG = {
       PERMISSIONS.VIEW_DASHBOARD,
       PERMISSIONS.VIEW_RISKS,
       PERMISSIONS.CREATE_RISK,
+      PERMISSIONS.MANAGE_MITIGATION_PLAN,
       PERMISSIONS.COMMITTEE_DECIDE,
       PERMISSIONS.VIEW_AUDIT,
       PERMISSIONS.VIEW_ALL_RISKS,
@@ -142,6 +143,7 @@ export function matchesUserIdentity(user, value) {
     user.id,
     user.backendUserId,
     user.keycloakSubject,
+    user.name,
   ]
     .map(normalizeIdentityValue)
     .filter(Boolean)

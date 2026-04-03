@@ -1620,7 +1620,13 @@ export default function RiskDetails() {
                       await addMitigationAction({
                         riskId: risk.id,
                         title: newAction.title,
-                        owner: risk.responsible || currentUser?.name || '',
+                        owner:
+                          risk.responsible ||
+                          currentUser?.username ||
+                          currentUser?.email ||
+                          currentUser?.id ||
+                          currentUser?.name ||
+                          '',
                         dueDate: newAction.dueDate,
                         status: 'Not Started',
                         notes: '',
