@@ -197,6 +197,17 @@ function normalizeProbabilityLevel(value) {
     return API_TO_PROBABILITY[normalizeEnumToken(value)]
   }
 
+  const numericValue = Number(value)
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    if (numericValue <= 0.34) {
+      return 'Low'
+    }
+    if (numericValue <= 0.67) {
+      return 'Medium'
+    }
+    return 'High'
+  }
+
   const normalized = String(value).trim()
   if (['Low', 'Medium', 'High'].includes(normalized)) {
     return normalized
@@ -303,6 +314,10 @@ async function request(path, { method = 'GET', body, unwrapData = true } = {}) {
 
 export async function getCurrentProfile() {
   return request('/app/me/', { unwrapData: false })
+}
+
+export async function getDepartmentMemberDirectory() {
+  return request('/app/api/directory/department-members/')
 }
 
 function createReferenceIndex(rawItems = [], nameNormalizer = null) {

@@ -19,7 +19,7 @@ import {
   statuses,
 } from '../../data/seedMeta'
 import { useAuth } from './AuthContext'
-import { canViewRisk, matchesRiskCreator } from '../../lib/access'
+import { canViewRisk, hasAccessRole, matchesRiskCreator } from '../../lib/access'
 import { applyGlobalRiskFilters } from '../../lib/compute'
 import { sameDepartment } from '../../lib/departments'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
@@ -673,7 +673,7 @@ export function ErmProvider({ children }) {
           }),
       )
     const derivedDirectorNotifications =
-      currentUser.accessRole === 'director'
+      hasAccessRole(currentUser, 'director')
         ? risks
             .map((risk) => {
               if (
@@ -722,9 +722,39 @@ export function ErmProvider({ children }) {
             .filter(Boolean)
         : []
 
-    return [...explicitNotifications, ...derivedDirectorNotifications]
+    const derivedMitigationPromptNotifications =
+      (hasAccessRole(currentUser, 'risk') || hasAccessRole(currentUser, 'committee'))
+        ? risks
+            .map((risk) => {
+              if (!['Accepted for Mitigation', 'Additional Mitigation Required'].includes(risk.status)) {
+                return null
+              }
+
+              const relatedActions = mitigationActions.filter(
+                (action) => String(action.riskId) === String(risk.id),
+              )
+
+              if (relatedActions.length) {
+                return null
+              }
+
+              const id = `derived-mitigation-plan:${risk.id}:${risk.status}`
+              return {
+                id,
+                riskId: risk.id,
+                riskTitle: risk.title,
+                at: risk.lastReviewedAt || risk.updatedAt || risk.createdAt || new Date().toISOString(),
+                title: 'Add mitigation actions',
+                message: `${risk.id} moved to ${risk.status}. Consider adding mitigation actions for this risk.`,
+                read: Boolean(readMap[id]),
+              }
+            })
+            .filter(Boolean)
+        : []
+
+    return [...explicitNotifications, ...derivedDirectorNotifications, ...derivedMitigationPromptNotifications]
       .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
-  }, [currentUser, notificationReads, risks])
+  }, [currentUser, mitigationActions, notificationReads, risks])
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((item) => !item.read).length,

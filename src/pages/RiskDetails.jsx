@@ -28,7 +28,7 @@ import { hasAccessRole, isAwaitingDecisionResponse, matchesRiskCreator, matchesU
 import { impactLevels, probabilityLevels, getProbabilityLevel, recalculateRisk } from '../lib/compute'
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
-import { getRiskRecord } from '../lib/api'
+import { getDepartmentMemberDirectory, getRiskRecord } from '../lib/api'
 
 const IMPORTANT_DECISION_TYPES = new Set(['Approve', 'Reject', 'Accept Residual Risk'])
 const WORKFLOW_RAIL = ['Draft', 'Under Risk Review', 'Committee Review 1', 'In Mitigation', 'Committee Review 2', 'Closed']
@@ -118,6 +118,7 @@ export default function RiskDetails() {
   const [chatFocusToken, setChatFocusToken] = useState(0)
   const [detailRisk, setDetailRisk] = useState(null)
   const [loadingRisk, setLoadingRisk] = useState(false)
+  const [assignableUsers, setAssignableUsers] = useState([])
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [financialDraft, setFinancialDraft] = useState({
     probability: 0,
@@ -168,7 +169,7 @@ export default function RiskDetails() {
   const canEditFinancialStage = canManageFinancials && isRiskManagerReview && !isActionLocked
   const canManageMitigationPlanStage =
     canManageMitigationPlan &&
-    (isMitigationDepartmentDirector || hasAccessRole(currentUser, 'risk')) &&
+    (isMitigationDepartmentDirector || hasAccessRole(currentUser, 'risk') || hasAccessRole(currentUser, 'committee')) &&
     isMitigationStage &&
     !isActionLocked
   const canUpdateMitigationProgressStage =
@@ -195,13 +196,8 @@ export default function RiskDetails() {
     [departmentItems],
   )
   const eligibleResponsibleUsers = useMemo(
-    () =>
-      users.filter(
-        (user) =>
-          (hasAccessRole(user, 'employee') || hasAccessRole(user, 'director')) &&
-          sameDepartment(user.department, risk?.mitigationDepartment),
-      ),
-    [risk?.mitigationDepartment, users],
+    () => assignableUsers.filter((user) => sameDepartment(user.department_name || user.department?.name, risk?.mitigationDepartment)),
+    [assignableUsers, risk?.mitigationDepartment],
   )
 
   const showErrorToast = (title, error) => {
@@ -264,6 +260,41 @@ export default function RiskDetails() {
       active = false
     }
   }, [id, isBackendConnected, departmentItems, categoryItems, decisionLogs, fallbackRisk])
+
+  useEffect(() => {
+    let active = true
+
+    if (!assignOpen || !canAssign || !isBackendConnected) {
+      if (!assignOpen) {
+        setAssignableUsers([])
+      }
+      return () => {
+        active = false
+      }
+    }
+
+    const loadAssignableUsers = async () => {
+      try {
+        const directory = await getDepartmentMemberDirectory()
+        if (!active) {
+          return
+        }
+        setAssignableUsers(Array.isArray(directory) ? directory : [])
+      } catch (error) {
+        if (!active) {
+          return
+        }
+        setAssignableUsers([])
+        showErrorToast('Unable to load department users', error)
+      }
+    }
+
+    void loadAssignableUsers()
+
+    return () => {
+      active = false
+    }
+  }, [assignOpen, canAssign, isBackendConnected])
 
   useEffect(() => {
     const needsDepartment =
@@ -1691,9 +1722,20 @@ export default function RiskDetails() {
         users={eligibleResponsibleUsers}
         initialResponsible={risk.responsible}
         onClose={() => setAssignOpen(false)}
-        onAssign={async (responsible, note) => {
+        onAssign={async (selectedUser, note) => {
+          if (!selectedUser) {
+            return
+          }
+
+          const responsible =
+            String(selectedUser.username || selectedUser.email || selectedUser.id || selectedUser.name || '').trim()
+
+          if (!responsible) {
+            addToast({ title: 'Unable to assign responsible user', message: 'Selected user is missing an identifier.', type: 'error' })
+            return
+          }
+
           try {
-            const assignedUser = users.find((user) => user.name === responsible)
             await runWithDeferredSync(async () => {
               await updateRisk(
                 risk.id,
@@ -1705,10 +1747,10 @@ export default function RiskDetails() {
                   by: currentUser?.name ?? 'Risk Committee',
                   diff: {
                     responsible,
-                    notification: assignedUser
+                    notification: selectedUser
                       ? {
-                          targetUserId: assignedUser.id,
-                          targetUserName: assignedUser.name,
+                          targetUserId: selectedUser.id,
+                          targetUserName: selectedUser.name,
                           title: t('notification.responsibleAssignedTitle'),
                           message: t('notification.responsibleAssignedDesc', {
                             riskId: risk.id,
@@ -1729,7 +1771,7 @@ export default function RiskDetails() {
                 })
               }
             })
-            addToast({ title: t('details.responsibleUpdated'), message: responsible, type: 'success' })
+            addToast({ title: t('details.responsibleUpdated'), message: selectedUser.name || responsible, type: 'success' })
             setAssignOpen(false)
           } catch (error) {
             showErrorToast('Unable to assign responsible user', error)

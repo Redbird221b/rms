@@ -10,16 +10,47 @@ export default function AssignDrawer({
   onAssign,
 }) {
   const { t } = useI18n()
-  const [responsible, setResponsible] = useState(initialResponsible || '')
+  const [responsible, setResponsible] = useState('')
   const [note, setNote] = useState('')
+
+  const uniqueUsers = Array.from(
+    new Map(
+      users
+        .filter(Boolean)
+        .map((user) => {
+          const value = String(user.username || user.email || user.id || user.name || '').trim()
+          if (!value) {
+            return null
+          }
+
+          const label = String(user.name || user.full_name || user.username || user.email || value).trim()
+          return [
+            value,
+            {
+              value,
+              label,
+              user,
+            },
+          ]
+        })
+        .filter(Boolean),
+    ).values(),
+  )
 
   useEffect(() => {
     if (!open) {
       return
     }
-    setResponsible(initialResponsible || '')
+    const initialMatch = uniqueUsers.find(({ user, value }) =>
+      [user?.username, user?.email, user?.id, user?.name, value]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .includes(String(initialResponsible || '').trim()),
+    )
+
+    setResponsible(initialMatch?.value || '')
     setNote('')
-  }, [initialResponsible, open])
+  }, [initialResponsible, open, uniqueUsers])
 
   useEffect(() => {
     if (!open) {
@@ -33,8 +64,6 @@ export default function AssignDrawer({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose, open])
-
-  const uniqueUsers = Array.from(new Set(users.map((user) => user.name)))
 
   return (
     <AnimatePresence>
@@ -69,9 +98,9 @@ export default function AssignDrawer({
                 className="input-field"
               >
                 <option value="">{t('modal.selectUser')}</option>
-                {uniqueUsers.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                {uniqueUsers.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
@@ -92,7 +121,7 @@ export default function AssignDrawer({
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => onAssign(responsible, note)}
+                onClick={() => onAssign(uniqueUsers.find((item) => item.value === responsible)?.user ?? null, note)}
                 disabled={!responsible}
               >
                 {t('modal.assign')}

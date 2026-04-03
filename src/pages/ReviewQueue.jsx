@@ -373,8 +373,14 @@ export default function ReviewQueue() {
           users={users}
           initialResponsible={assignRisk?.responsible}
           onClose={() => setAssignRisk(null)}
-          onAssign={async (responsible, note) => {
+          onAssign={async (selectedUser, note) => {
             if (!assignRisk) {
+              return
+            }
+            const responsible =
+              String(selectedUser?.username || selectedUser?.email || selectedUser?.id || selectedUser?.name || '').trim()
+            if (!responsible) {
+              showErrorToast('Unable to assign risk', new Error('Selected user is missing an identifier.'))
               return
             }
             try {
@@ -390,7 +396,7 @@ export default function ReviewQueue() {
               )
               addToast({
                 title: t('queue.toast.assigned'),
-                message: `${assignRisk.id} -> ${responsible}`,
+                message: `${assignRisk.id} -> ${selectedUser?.name || responsible}`,
                 type: 'success',
               })
               setAssignRisk(null)
