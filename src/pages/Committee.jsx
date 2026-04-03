@@ -349,149 +349,128 @@ export default function Committee() {
     <div className="space-y-5">
       <PageHeader title={t('committee.title')} subtitle={t('committee.subtitle')} />
 
-      <section className="panel overflow-hidden">
-        <div className="grid gap-0 xl:grid-cols-[1.35fr,0.9fr]">
-          <div className="border-b border-[#E4EAF4] bg-[radial-gradient(circle_at_top_left,#FFFFFF_0%,#F3F7FF_48%,#EEF3FF_100%)] px-5 py-5 dark:border-[#2F4878] dark:bg-[radial-gradient(circle_at_top_left,#1A315B_0%,#122241_52%,#0E1830_100%)] sm:px-6">
-            <div className="flex flex-col gap-4">
-              <div className="max-w-2xl">
-                <div className="inline-flex rounded-full border border-[#D6E2FF] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
-                  {t('committee.agenda')}
-                </div>
-                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                  {t('committee.agendaSubtitle')}
-                </h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {t('committee.subtitle')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-[22px] border border-[#DCE6F8] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#355281] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
-                  <div className="flex items-center gap-2">
-                    <BadgeDollarSign className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {t('committee.metric.total')}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.total}</p>
-                </div>
-                <div className="rounded-[22px] border border-[#DCE6F8] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#355281] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
-                  <div className="flex items-center gap-2">
-                    <Clock3 className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {t('committee.metric.stage2')}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.stageTwo}</p>
-                </div>
-                <div className="rounded-[22px] border border-[#F2D1C2] bg-white/80 px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.08)] dark:border-[#7B442C] dark:bg-[#10203D]/88 dark:shadow-[0_20px_36px_rgba(3,8,20,0.24)]">
-                  <div className="flex items-center gap-2">
-                    <LockKeyhole className="h-4 w-4 text-[#DB4300] dark:text-[#FFD1BF]" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {t('committee.metric.locked')}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.locked}</p>
-                </div>
-              </div>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.45fr,0.95fr]">
+        <article className="panel p-5 sm:p-6">
+          <div className="max-w-3xl">
+            <div className="inline-flex rounded-full border border-[#D6E2FF] bg-[#F5F8FF] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
+              {t('committee.agenda')}
             </div>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+              {t('committee.agendaSubtitle')}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {t('committee.subtitle')}
+            </p>
           </div>
 
-          <div className="bg-[#F7FAFF] px-5 py-5 dark:bg-[#0F1A31] sm:px-6">
-            <div className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                    {activeStageTab}
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]">
+              <div className="flex items-center gap-2">
+                <BadgeDollarSign className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t('committee.metric.total')}
+                </span>
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.total}</p>
+            </div>
+            <div className="rounded-[22px] border border-[#E6ECF5] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]">
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t('committee.metric.stage2')}
+                </span>
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.stageTwo}</p>
+            </div>
+            <div className="rounded-[22px] border border-[#F2D1C2] bg-[#FFF7F2] px-4 py-4 dark:border-[#7B442C] dark:bg-[#2A1B15]">
+              <div className="flex items-center gap-2">
+                <LockKeyhole className="h-4 w-4 text-[#DB4300] dark:text-[#FFD1BF]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {t('committee.metric.locked')}
+                </span>
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{agendaStats.locked}</p>
+            </div>
+          </div>
+        </article>
+
+        <aside className="panel p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                {activeStageTab}
+              </p>
+              <h3 className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                {focusRisk ? focusRisk.title : t('committee.agendaEmptyTitle')}
+              </h3>
+            </div>
+            {focusRisk ? <StatusChip status={focusRisk.status} /> : null}
+          </div>
+
+          {focusRisk ? (
+            <>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <SeverityBadge severity={focusRisk.severity} />
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(focusRisk.reason, t)}`}
+                >
+                  {focusRisk.reason}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[20px] bg-[#F8FAFE] px-3 py-3 dark:bg-[#10203D]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    {t('committee.expectedLoss')}
                   </p>
-                  <h3 className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
-                    {focusRisk ? focusRisk.title : t('committee.agendaEmptyTitle')}
-                  </h3>
+                  <p className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
+                    {formatCurrency(focusRisk.expectedLoss)}
+                  </p>
                 </div>
-                {focusRisk ? <StatusChip status={focusRisk.status} /> : null}
+                <div className="rounded-[20px] bg-[#F8FAFE] px-3 py-3 dark:bg-[#10203D]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    {t('committee.lastReviewed')}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-950 dark:text-white">
+                    {formatDate(focusRisk.lastReviewedAt)}
+                  </p>
+                </div>
               </div>
 
-              {focusRisk ? (
-                <>
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <SeverityBadge severity={focusRisk.severity} />
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(focusRisk.reason, t)}`}
-                    >
-                      {focusRisk.reason}
-                    </span>
-                  </div>
-
-                  {focusRisk.description ? (
-                    <p
-                      className="mt-4 overflow-hidden text-sm leading-6 text-slate-600 dark:text-slate-300"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitBoxOrient: 'vertical',
-                        WebkitLineClamp: 3,
-                      }}
-                    >
-                      {focusRisk.description}
-                    </p>
-                  ) : null}
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl bg-[#F5F8FF] px-3 py-3 dark:bg-[#10203D]">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                        {t('committee.expectedLoss')}
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
-                        {formatCurrency(focusRisk.expectedLoss)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-[#F5F8FF] px-3 py-3 dark:bg-[#10203D]">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                        {t('committee.mitigationDepartment')}
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950 dark:text-white">
-                        {focusRisk.mitigationDepartment
-                          ? tr('department', focusRisk.mitigationDepartment)
-                          : t('committee.noMitigationDepartment')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => navigate(`/risks/${focusRisk.id}`)}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <FolderOpenDot className="h-4 w-4" />
-                        Open Risk
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      disabled={focusRisk.isActionLocked}
-                      onClick={() => {
-                        if (!focusRisk.isActionLocked) {
-                          setActiveRisk(focusRisk)
-                        }
-                      }}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        {t('committee.record')}
-                        <ArrowRight className="h-4 w-4" />
-                      </span>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                  {t('committee.agendaEmptyDesc')}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate(`/risks/${focusRisk.id}`)}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <FolderOpenDot className="h-4 w-4" />
+                    Open Risk
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={focusRisk.isActionLocked}
+                  onClick={() => {
+                    if (!focusRisk.isActionLocked) {
+                      setActiveRisk(focusRisk)
+                    }
+                  }}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {t('committee.record')}
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              {t('committee.agendaEmptyDesc')}
+            </p>
+          )}
+        </aside>
       </section>
 
       <section className="space-y-4">

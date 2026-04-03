@@ -996,173 +996,161 @@ export default function RiskDetails() {
 
   return (
     <div className="space-y-5">
-      <section className="panel overflow-hidden">
-        <div className="grid gap-0 xl:grid-cols-[1.45fr,0.9fr]">
-          <div className="border-b border-[#E4EAF4] bg-[radial-gradient(circle_at_top_left,#FFFFFF_0%,#F4F8FF_42%,#EEF3FF_100%)] px-5 py-5 dark:border-[#2F4878] dark:bg-[radial-gradient(circle_at_top_left,#1A315B_0%,#122241_52%,#0E1830_100%)] sm:px-6">
-            <div className="max-w-4xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#D6E2FF] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
-                  {risk.id}
-                </span>
-                <StatusChip status={risk.status} />
-                <SeverityBadge severity={risk.severity} />
-                <span className="rounded-full border border-[#E2E8F4] bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 dark:border-[#355281] dark:bg-[#13264A] dark:text-slate-200">
-                  {tr('category', risk.category)}
-                </span>
-              </div>
-
-              <h1 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-[2.15rem]">
-                {risk.title}
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-                {risk.description}
-              </p>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {overviewHighlights.map((item) => {
-                  const Icon = item.icon
-
-                  return (
-                    <article
-                      key={item.key}
-                      className={`rounded-[22px] border px-4 py-4 shadow-[0_10px_30px_rgba(38,72,126,0.06)] ${item.accent}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          {item.label}
-                        </p>
-                      </div>
-                      <p className="mt-3 break-words text-base font-semibold text-slate-950 dark:text-white">
-                        {item.value}
-                      </p>
-                    </article>
-                  )
-                })}
-              </div>
-            </div>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr,0.95fr]">
+        <article className="panel p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[#D6E2FF] bg-[#F5F8FF] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
+              {risk.id}
+            </span>
+            <StatusChip status={risk.status} />
+            <SeverityBadge severity={risk.severity} />
+            <span className="rounded-full border border-[#E2E8F4] bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-[#355281] dark:bg-[#13264A] dark:text-slate-200">
+              {tr('category', risk.category)}
+            </span>
           </div>
 
-          <aside className="space-y-4 bg-[#F8FAFF] px-5 py-5 dark:bg-[#0F1A31] sm:px-6">
-            <section className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                  Workflow
-                </p>
+          <h1 className="mt-4 max-w-4xl text-[2rem] font-semibold tracking-tight text-slate-950 dark:text-white">
+            {risk.title}
+          </h1>
+          <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {risk.description}
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
+              {t('details.createdBy')}: {createdByName}
+            </span>
+            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
+              {t('details.owner')}: {risk.owner}
+            </span>
+            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
+              {t('details.responsible')}: {risk.responsible || '—'}
+            </span>
+            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
+              {t('details.mitigationDepartment')}: {risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '—'}
+            </span>
+          </div>
+        </article>
+
+        <aside className="panel p-5">
+          <div className="flex items-center gap-2">
+            <MessageSquareText className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+              Available actions
+            </p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {isActionLocked ? t('workflow.awaitingResponse') : t('committee.cardReady')}
+          </p>
+
+          <div className="mt-4 grid gap-2">
+            {primaryActions.map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                className="btn-primary w-full justify-between"
+                onClick={action.onClick}
+                disabled={action.disabled}
+              >
+                <span className="inline-flex w-full items-center justify-between gap-3">
+                  {action.label}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </button>
+            ))}
+            {secondaryActions.map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                className="btn-secondary w-full justify-between"
+                onClick={action.onClick}
+                disabled={action.disabled}
+              >
+                {action.label}
+              </button>
+            ))}
+            {!primaryActions.length && !secondaryActions.length ? (
+              <div className="rounded-[22px] border border-dashed border-[#D7E2F6] bg-[#F8FAFE] p-4 text-sm leading-6 text-slate-500 dark:border-[#355281] dark:bg-[#10203D] dark:text-slate-300">
+                No actions are available for your current role at this stage.
               </div>
+            ) : null}
+          </div>
+        </aside>
+      </section>
 
-              <div className="mt-4 space-y-3">
-                {workflowSteps.map((step, index) => {
-                  const isComplete = step.state === 'complete'
-                  const isActive = step.state === 'active'
+      <section className="panel p-5 sm:p-6">
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+              Workflow
+            </p>
+          </div>
 
-                  return (
-                    <div
-                      key={step.value}
-                      className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
+          <div className="grid gap-3 xl:grid-cols-6">
+            {workflowSteps.map((step, index) => {
+              const isComplete = step.state === 'complete'
+              const isActive = step.state === 'active'
+
+              return (
+                <div
+                  key={step.value}
+                  className={`rounded-[22px] border px-4 py-4 transition-colors ${
+                    isActive
+                      ? 'border-[#C9D7FF] bg-[#EEF3FF] dark:border-[#4569A8] dark:bg-[#17315E]'
+                      : isComplete
+                        ? 'border-[#D5EAD9] bg-[#F4FBF5] dark:border-[#3D6A4C] dark:bg-[#11281A]'
+                        : 'border-[#E7EDF8] bg-[#FBFCFF] dark:border-[#304B78] dark:bg-[#10203D]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                         isActive
-                          ? 'border-[#C9D7FF] bg-[#EEF3FF] dark:border-[#4569A8] dark:bg-[#17315E]'
+                          ? 'bg-[#0041B6] text-white'
                           : isComplete
-                            ? 'border-[#D5EAD9] bg-[#F4FBF5] dark:border-[#3D6A4C] dark:bg-[#11281A]'
-                            : 'border-[#E7EDF8] bg-[#FBFCFF] dark:border-[#304B78] dark:bg-[#10203D]'
+                            ? 'bg-[#1B7A39] text-white'
+                            : 'bg-slate-200 text-slate-600 dark:bg-[#21375E] dark:text-slate-300'
                       }`}
                     >
-                      <span
-                        className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                          isActive
-                            ? 'bg-[#0041B6] text-white'
-                            : isComplete
-                              ? 'bg-[#1B7A39] text-white'
-                              : 'bg-slate-200 text-slate-600 dark:bg-[#21375E] dark:text-slate-300'
-                        }`}
-                      >
-                        {isComplete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-3.5 w-3.5" />}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          {index + 1}
-                        </p>
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {tr('status', step.value)}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-
-            <section className="rounded-[26px] border border-[#D8E5FA] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)] dark:border-[#304B78] dark:bg-[#13264A] dark:shadow-[0_24px_42px_rgba(2,6,23,0.35)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                {t('details.metadata')}
-              </p>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">{t('details.createdBy')}</dt>
-                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{createdByName}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">{t('details.owner')}</dt>
-                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.owner}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">{t('details.responsible')}</dt>
-                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{risk.responsible || '—'}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">{t('details.mitigationDepartment')}</dt>
-                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">
-                    {risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '—'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">{t('details.created')}</dt>
-                  <dd className="text-right font-medium text-slate-900 dark:text-slate-100">{formatDate(risk.createdAt)}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="rounded-[26px] bg-[#0F2141] p-5 text-white shadow-[0_18px_42px_rgba(12,25,53,0.35)] dark:bg-[#0C1830]">
-              <div className="flex items-center gap-2">
-                <MessageSquareText className="h-4 w-4 text-[#BFD3FF]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#BFD3FF]">
-                  Available actions
-                </p>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[#DBE6FF]">
-                {isActionLocked ? t('workflow.awaitingResponse') : t('committee.cardReady')}
-              </p>
-
-              <div className="mt-4 grid gap-2">
-                {primaryActions.map((action) => (
-                  <button
-                    key={action.key}
-                    type="button"
-                    className="btn-primary w-full justify-between"
-                    onClick={action.onClick}
-                    disabled={action.disabled}
-                  >
-                    <span className="inline-flex w-full items-center justify-between gap-3">
-                      {action.label}
-                      <ArrowRight className="h-4 w-4" />
+                      {isComplete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
                     </span>
-                  </button>
-                ))}
-                {secondaryActions.map((action) => (
-                  <button
-                    key={action.key}
-                    type="button"
-                    className="btn-secondary w-full justify-between border-white/15 bg-white/8 text-white hover:bg-white/14 hover:text-white dark:border-white/15 dark:bg-white/8 dark:text-white dark:hover:bg-white/14"
-                    onClick={action.onClick}
-                    disabled={action.disabled}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          </aside>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        Step {index + 1}
+                      </p>
+                      <p className="mt-1 text-sm font-medium leading-5 text-slate-900 dark:text-slate-100">
+                        {tr('status', step.value)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {overviewHighlights.map((item) => {
+              const Icon = item.icon
+
+              return (
+                <article
+                  key={item.key}
+                  className="rounded-[22px] border border-[#E7EDF8] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {item.label}
+                    </p>
+                  </div>
+                  <p className="mt-3 break-words text-base font-semibold text-slate-950 dark:text-white">
+                    {item.value}
+                  </p>
+                </article>
+              )
+            })}
+          </div>
         </div>
       </section>
 
