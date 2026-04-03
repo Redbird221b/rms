@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../app/context/I18nContext'
 
 export default function AssignDrawer({
@@ -13,28 +13,32 @@ export default function AssignDrawer({
   const [responsible, setResponsible] = useState('')
   const [note, setNote] = useState('')
 
-  const uniqueUsers = Array.from(
-    new Map(
-      users
-        .filter(Boolean)
-        .map((user) => {
-          const value = String(user.username || user.email || user.id || user.name || '').trim()
-          if (!value) {
-            return null
-          }
+  const uniqueUsers = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          users
+            .filter(Boolean)
+            .map((user) => {
+              const value = String(user.username || user.email || user.id || user.name || '').trim()
+              if (!value) {
+                return null
+              }
 
-          const label = String(user.name || user.full_name || user.username || user.email || value).trim()
-          return [
-            value,
-            {
-              value,
-              label,
-              user,
-            },
-          ]
-        })
-        .filter(Boolean),
-    ).values(),
+              const label = String(user.name || user.full_name || user.username || user.email || value).trim()
+              return [
+                value,
+                {
+                  value,
+                  label,
+                  user,
+                },
+              ]
+            })
+            .filter(Boolean),
+        ).values(),
+      ),
+    [users],
   )
 
   useEffect(() => {
