@@ -418,10 +418,12 @@ export default function RiskDetails() {
   }
 
   const isMitigationActionOwner = (action) => matchesUserIdentity(currentUser, action?.owner)
+  const canPerformMitigationAction = (action) =>
+    isMitigationActionOwner(action) || isMitigationDepartmentDirector
 
   const canEditMitigationAction = (action) =>
     canUpdateMitigationProgressStage &&
-    isMitigationActionOwner(action) &&
+    canPerformMitigationAction(action) &&
     ['Not Started', 'In Progress'].includes(action?.status)
 
   const canReviewMitigationAction = (action) =>
