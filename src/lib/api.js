@@ -452,6 +452,14 @@ function sortByDateDesc(items, key) {
   })
 }
 
+function sortByDateAsc(items, key) {
+  return [...items].sort((left, right) => {
+    const leftValue = new Date(left[key] || 0).getTime()
+    const rightValue = new Date(right[key] || 0).getTime()
+    return leftValue - rightValue
+  })
+}
+
 function groupBy(items, key) {
   return items.reduce((accumulator, item) => {
     const groupKey = String(item[key] || '')
@@ -572,10 +580,10 @@ function normalizeMitigationRecord(entry) {
 function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsByRisk, activitiesByRisk }) {
   const riskId =
     entry?.id ??
-    entry?.risk_number ??
     entry?.risk_id ??
     entry?.riskId ??
     buildFallbackId('risk', [entry?.title, entry?.created_at])
+  const riskNumber = entry?.risk_number ?? entry?.riskNumber ?? String(riskId)
   const latestDecision = (decisionsByRisk.get(String(riskId)) || [])[0]
   const latestWorkflowActivity = (activitiesByRisk.get(String(riskId)) || []).find(
     (activity) => activity?.diff?.workflowStatus,
@@ -646,6 +654,7 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
 
   return {
     ...computedRisk,
+    riskNumber,
     expectedLoss,
     inherentScore,
     residualScore,
@@ -702,9 +711,9 @@ export async function loadErmDataset() {
     'updatedAt',
   )
 
-  const mitigationActions = sortByDateDesc(
+  const mitigationActions = sortByDateAsc(
     (Array.isArray(rawMitigations) ? rawMitigations : []).map(normalizeMitigationRecord),
-    'updatedAt',
+    'createdAt',
   )
 
   return {

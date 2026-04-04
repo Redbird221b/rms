@@ -29,6 +29,7 @@ import { impactLevels, probabilityLevels, getProbabilityLevel, recalculateRisk }
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
 import { getDepartmentMemberDirectory, getRiskRecord } from '../lib/api'
+import { getRiskReference } from '../lib/risks'
 
 const IMPORTANT_DECISION_TYPES = new Set(['Approve', 'Reject', 'Accept Residual Risk'])
 const WORKFLOW_RAIL = ['Draft', 'Under Risk Review', 'Committee Review 1', 'In Mitigation', 'Committee Review 2', 'Closed']
@@ -143,6 +144,7 @@ export default function RiskDetails() {
     return detailRisk ?? fallbackRisk
   }, [detailRisk, fallbackRisk])
   const riskKey = String(risk?.id ?? id ?? '')
+  const riskReference = getRiskReference(risk)
   const canManageFinancials = hasPermission(PERMISSIONS.EDIT_FINANCIALS)
   const canManageMitigationPlan = hasPermission(PERMISSIONS.MANAGE_MITIGATION_PLAN)
   const canUpdateMitigationProgress = hasPermission(PERMISSIONS.UPDATE_MITIGATION_PROGRESS)
@@ -185,7 +187,7 @@ export default function RiskDetails() {
     !isActionLocked
   const canUpdateMitigationProgressStage =
     canUpdateMitigationProgress &&
-    ['In Mitigation', 'Additional Mitigation Required'].includes(risk?.status) &&
+    ['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required'].includes(risk?.status) &&
     !isActionLocked
   const canRequestInfoAction = !isActionLocked && (isRiskManagerReview || isCommitteeStage1)
   const canRejectRiskManagerAction = !isActionLocked && isRiskManagerReview
@@ -320,7 +322,17 @@ export default function RiskDetails() {
   }, [actionState.open, actionState.type, isCommitteeStage1, isCommitteeStage2, risk])
 
   const actions = useMemo(
-    () => mitigationActions.filter((action) => String(action.riskId) === riskKey),
+    () =>
+      mitigationActions
+        .filter((action) => String(action.riskId) === riskKey)
+        .sort((left, right) => {
+          const leftTime = new Date(left?.createdAt || 0).getTime()
+          const rightTime = new Date(right?.createdAt || 0).getTime()
+          if (leftTime !== rightTime) {
+            return leftTime - rightTime
+          }
+          return String(left?.id || '').localeCompare(String(right?.id || ''))
+        }),
     [mitigationActions, riskKey],
   )
 
@@ -506,7 +518,7 @@ export default function RiskDetails() {
           )
         })
 
-        addToast({ title: t('details.responseSubmitted'), message: risk.id, type: 'success' })
+        addToast({ title: t('details.responseSubmitted'), message: riskReference, type: 'success' })
         return
       }
 
@@ -519,7 +531,7 @@ export default function RiskDetails() {
           replyTo: replyTarget?.id ?? null,
         },
       })
-      addToast({ title: t('details.commentAdded'), message: risk.id, type: 'success' })
+      addToast({ title: t('details.commentAdded'), message: riskReference, type: 'success' })
     } catch (error) {
       showErrorToast('Unable to send message', error)
       throw error
@@ -636,7 +648,7 @@ export default function RiskDetails() {
               },
             },
           )
-          addToast({ title: 'Mitigation plan sent', message: risk.id, type: 'success' })
+          addToast({ title: 'Mitigation plan sent', message: riskReference, type: 'success' })
           return
         }
 
@@ -665,7 +677,7 @@ export default function RiskDetails() {
           at: new Date(new Date(now).getTime() + 1).toISOString(),
           diff: { messageKind: 'comment' },
         })
-          addToast({ title: t('details.responseSubmitted'), message: risk.id, type: 'success' })
+          addToast({ title: t('details.responseSubmitted'), message: riskReference, type: 'success' })
         }
 
         if (actionState.type === 'Approve') {
@@ -737,7 +749,7 @@ export default function RiskDetails() {
               : isCommitteeStage2
                 ? t('workflow.action.closeRisk')
                 : t('workflow.action.sendToMitigation'),
-            message: risk.id,
+            message: riskReference,
             type: 'success',
           })
         }
@@ -776,7 +788,7 @@ export default function RiskDetails() {
           at: new Date(new Date(now).getTime() + 1).toISOString(),
           diff: { messageKind: 'decision-comment', decisionType: 'Request Info' },
         })
-          addToast({ title: t('queue.toast.infoRequested'), message: risk.id, type: 'success' })
+          addToast({ title: t('queue.toast.infoRequested'), message: riskReference, type: 'success' })
         }
 
         if (actionState.type === 'Reject') {
@@ -844,7 +856,7 @@ export default function RiskDetails() {
         })
           addToast({
             title: isCommitteeStage2 ? t('workflow.action.additionalMitigation') : t('queue.toast.rejected'),
-            message: risk.id,
+            message: riskReference,
             type: isCommitteeStage2 ? 'success' : 'error',
           })
         }
@@ -883,7 +895,7 @@ export default function RiskDetails() {
           at: new Date(new Date(now).getTime() + 1).toISOString(),
           diff: { messageKind: 'decision-comment', decisionType: 'Accept Residual Risk' },
         })
-          addToast({ title: t('workflow.action.acceptResidualRisk'), message: risk.id, type: 'success' })
+          addToast({ title: t('workflow.action.acceptResidualRisk'), message: riskReference, type: 'success' })
         }
       })
 
@@ -1075,7 +1087,7 @@ export default function RiskDetails() {
         <article className="panel p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-[#D6E2FF] bg-[#F5F8FF] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
-              {risk.id}
+              {riskReference}
             </span>
             <StatusChip status={risk.status} />
             <SeverityBadge severity={risk.severity} />
@@ -1461,7 +1473,7 @@ export default function RiskDetails() {
                           by: currentUser?.name ?? 'Risk Manager',
                         },
                       )
-                      addToast({ title: t('details.financialUpdated'), message: risk.id, type: 'success' })
+                      addToast({ title: t('details.financialUpdated'), message: riskReference, type: 'success' })
                     } catch (error) {
                       showErrorToast('Unable to update financials', error)
                     }
@@ -1679,7 +1691,7 @@ export default function RiskDetails() {
                           status: 'Not Started',
                           notes: '',
                         })
-                        addToast({ title: t('details.actionAdded'), message: risk.id, type: 'success' })
+                        addToast({ title: t('details.actionAdded'), message: riskReference, type: 'success' })
                         setNewAction({ title: '', dueDate: '' })
                       } catch (error) {
                         showErrorToast('Unable to add mitigation action', error)
@@ -1889,7 +1901,7 @@ export default function RiskDetails() {
               ? t('details.sendToMitigationDesc')
             : actionState.type === 'Reject' && isCommitteeStage2
               ? t('details.additionalMitigationDesc')
-            : risk.id
+            : riskReference
         }
         confirmLabel={
           actionState.type === 'Submit Mitigation Action'

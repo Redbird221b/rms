@@ -12,6 +12,7 @@ import AssignDrawer from '../components/modals/AssignDrawer'
 import DataTable from '../components/table/DataTable'
 import { isAwaitingDecisionResponse, PERMISSIONS } from '../lib/access'
 import { formatCurrency, formatDate } from '../lib/format'
+import { getRiskReference } from '../lib/risks'
 
 export default function ReviewQueue() {
   const {
@@ -198,7 +199,12 @@ export default function ReviewQueue() {
   }
 
   const columns = [
-    { key: 'id', label: t('queue.col.id'), sortable: true },
+    {
+      key: 'id',
+      label: t('queue.col.id'),
+      sortable: true,
+      render: (risk) => getRiskReference(risk),
+    },
     {
       key: 'title',
       label: t('queue.col.risk'),
@@ -396,7 +402,7 @@ export default function ReviewQueue() {
               )
               addToast({
                 title: t('queue.toast.assigned'),
-                message: `${assignRisk.id} -> ${selectedUser?.name || responsible}`,
+                message: `${getRiskReference(assignRisk)} -> ${selectedUser?.name || responsible}`,
                 type: 'success',
               })
               setAssignRisk(null)

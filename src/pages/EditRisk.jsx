@@ -8,6 +8,7 @@ import PageHeader from '../components/common/PageHeader'
 import RiskForm from '../components/forms/RiskForm'
 import { getRiskRecord } from '../lib/api'
 import { matchesRiskCreator } from '../lib/access'
+import { getRiskReference } from '../lib/risks'
 
 export default function EditRisk() {
   const { id } = useParams()
@@ -73,6 +74,7 @@ export default function EditRisk() {
   }, [id, isBackendConnected, departmentItems, categoryItems])
 
   const risk = editableRisk ?? fallbackRisk
+  const riskReference = getRiskReference(risk)
   const isDraftAuthor = Boolean(risk) && risk.status === 'Draft' && matchesRiskCreator(currentUser, risk)
 
   if (!isBackendConnected && !backendError) {
@@ -122,7 +124,7 @@ export default function EditRisk() {
       addToast({
         type: 'success',
         title: submittingToReview ? t('edit.toast.submitted') : t('edit.toast.updated'),
-        message: risk.id,
+        message: riskReference,
       })
 
       navigate(`/risks/${risk.id}`)

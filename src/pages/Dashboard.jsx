@@ -14,6 +14,7 @@ import StatusChip from '../components/common/StatusChip'
 import { SkeletonCard } from '../components/common/Skeletons'
 import { buildExpectedLossTrend, sortRisksByExpectedLoss } from '../lib/compute'
 import { formatCompactCurrency, formatCurrency } from '../lib/format'
+import { getRiskReference } from '../lib/risks'
 
 export default function Dashboard() {
   const { filteredRisks, mitigationActions, queueStatuses, decisionLogs, isBackendConnected, backendError } = useErm()
@@ -158,7 +159,7 @@ export default function Dashboard() {
                     >
                       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{action.title}</p>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                        {action.riskId} · {t('dashboard.due')} {action.dueDate}
+                        {getRiskReference(action.risk)} · {t('dashboard.due')} {action.dueDate}
                       </p>
                     </div>
                   ))
@@ -178,7 +179,7 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{tr('decisionType', entry.decisionType)}</p>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{entry.riskId}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{getRiskReference(entry.risk) || entry.riskId}</span>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                         {entry.risk?.title || t('dashboard.riskRecord')} · {entry.decidedBy}
@@ -226,7 +227,7 @@ export default function Dashboard() {
                 {queueSnapshot.length ? (
                   queueSnapshot.map((risk) => (
                     <div key={risk.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-xs text-slate-600 dark:text-slate-300">{risk.id}</span>
+                      <span className="truncate text-xs text-slate-600 dark:text-slate-300">{getRiskReference(risk)}</span>
                       <StatusChip status={risk.status} />
                     </div>
                   ))

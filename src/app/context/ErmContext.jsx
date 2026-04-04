@@ -67,6 +67,14 @@ function sortItemsByDateDesc(items, key) {
   })
 }
 
+function sortItemsByDateAsc(items, key) {
+  return [...items].sort((left, right) => {
+    const leftValue = new Date(left?.[key] || 0).getTime()
+    const rightValue = new Date(right?.[key] || 0).getTime()
+    return leftValue - rightValue
+  })
+}
+
 function hasPersistentReferenceId(item) {
   return item?.id !== null && item?.id !== undefined && item?.id !== ''
 }
@@ -532,7 +540,7 @@ export function ErmProvider({ children }) {
           }
         : nextAction
 
-    setMitigationActions((current) => sortItemsByDateDesc([...current, persistedAction], 'updatedAt'))
+    setMitigationActions((current) => sortItemsByDateAsc([...current, persistedAction], 'createdAt'))
     await scheduleBackendSync()
     return true
   }
@@ -549,7 +557,7 @@ export function ErmProvider({ children }) {
     }, { useStaffEndpoint })
 
     setMitigationActions((current) =>
-      sortItemsByDateDesc(
+      sortItemsByDateAsc(
         current.map((action) =>
           String(action.id) === String(actionId)
             ? {
@@ -559,7 +567,7 @@ export function ErmProvider({ children }) {
               }
             : action,
         ),
-        'updatedAt',
+        'createdAt',
       ),
     )
 

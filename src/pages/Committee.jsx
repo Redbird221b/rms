@@ -15,6 +15,7 @@ import { isOverdue, sortRisksByExpectedLoss } from '../lib/compute'
 import { sameDepartment } from '../lib/departments'
 import { formatCurrency, formatDate } from '../lib/format'
 import { hasAccessRole, isAwaitingDecisionResponse } from '../lib/access'
+import { getRiskReference } from '../lib/risks'
 
 const logDecisionOptions = ['Approve', 'Reject', 'Request Info', 'Accept Residual Risk']
 const committeeReviewStatuses = ['Committee Review 1', 'Committee Review 2']
@@ -214,7 +215,7 @@ export default function Committee() {
         const risk = risks.find((item) => item.id === entry.riskId)
         return (
           <div>
-            <p className="font-medium text-slate-900 dark:text-slate-100">{entry.riskId}</p>
+            <p className="font-medium text-slate-900 dark:text-slate-100">{getRiskReference(risk) || entry.riskId}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">{risk?.title || t('common.unknownRisk')}</p>
           </div>
         )
@@ -280,11 +281,11 @@ export default function Committee() {
               : t('notification.mitigationAssignedTitle'),
             message: isStageTwo
               ? t('notification.additionalMitigationAssignedDesc', {
-                  riskId: activeRisk.id,
+                  riskId: getRiskReference(activeRisk),
                   department: mitigationDepartment,
                 })
               : t('notification.mitigationAssignedDesc', {
-                  riskId: activeRisk.id,
+                  riskId: getRiskReference(activeRisk),
                   department: mitigationDepartment,
                 }),
           }
@@ -336,7 +337,7 @@ export default function Committee() {
 
       addToast({
         title: t('committee.toast.logged'),
-        message: t('committee.toast.marked', { riskId: activeRisk.id, decision: currentDecisionLabel }),
+        message: t('committee.toast.marked', { riskId: getRiskReference(activeRisk), decision: currentDecisionLabel }),
         type: 'success',
       })
       setActiveRisk(null)
@@ -489,7 +490,7 @@ export default function Committee() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[#D5E2FA] bg-white/75 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-[#45629A] dark:bg-[#10203D] dark:text-slate-400">
-                          {risk.id}
+                          {getRiskReference(risk)}
                         </span>
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getAgendaReasonTone(risk.reason, t)}`}
@@ -644,7 +645,7 @@ export default function Committee() {
       <ActionModal
         open={Boolean(activeRisk)}
         title={activeRisk ? t('committee.modalTitle', { decision: currentDecisionLabel }) : t('committee.record')}
-        description={activeRisk ? `${activeRisk.id} · ${activeRisk.title}` : ''}
+        description={activeRisk ? `${getRiskReference(activeRisk)} · ${activeRisk.title}` : ''}
         confirmLabel={t('committee.confirm', { decision: currentDecisionLabel })}
         requireComment
         confirmDisabled={requiresMitigationDepartment && !selectedDepartment}
