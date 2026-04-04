@@ -436,6 +436,16 @@ export default function RiskDetails() {
     canUpdateMitigationProgressStage &&
     canPerformMitigationAction(action) &&
     ['Not Started', 'In Progress'].includes(action?.status)
+  const canStartMitigationAction = (action) =>
+    canEditMitigationAction(action) && action?.status === 'Not Started'
+  const canSubmitMitigationAction = (action) =>
+    canEditMitigationAction(action) && action?.status === 'In Progress'
+  const canSendMitigationPlanToCommittee =
+    isMitigationDepartmentDirector &&
+    ['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required'].includes(risk?.status) &&
+    actions.length > 0 &&
+    actions.every((action) => action?.status === 'Approved') &&
+    !isActionLocked
 
   const canReviewMitigationAction = (action) =>
     canReviewMitigationActions &&
@@ -606,6 +616,27 @@ export default function RiskDetails() {
             },
           )
           addToast({ title: 'Mitigation action returned to progress', message: selectedMitigationAction.title, type: 'error' })
+          return
+        }
+
+        if (actionState.type === 'Send Mitigation Plan to Committee') {
+          await updateRisk(
+            risk.id,
+            {
+              status: 'Committee Review 2',
+              lastReviewedAt: now,
+            },
+            {
+              type: 'review',
+              title: 'Mitigation plan sent to Committee Review 2',
+              notes: 'All mitigation actions were approved and the department director sent the plan for committee review.',
+              by: actor,
+              diff: {
+                workflowStatus: 'Committee Review 2',
+              },
+            },
+          )
+          addToast({ title: 'Mitigation plan sent', message: risk.id, type: 'success' })
           return
         }
 
@@ -1525,29 +1556,32 @@ export default function RiskDetails() {
                       <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]">
                         {canEditMitigationAction(action) ? (
                           <>
-                            <select
-                              className="input-field !py-2"
-                              value={action.status}
-                              onChange={(event) => {
-                                void updateMitigationAction(
-                                  action.id,
-                                  { status: event.target.value },
-                                  { useStaffEndpoint: true },
-                                ).catch((error) => {
-                                  showErrorToast('Unable to update mitigation', error)
-                                })
-                              }}
-                            >
-                              <option value="Not Started">{tr('actionStatus', 'Not Started')}</option>
-                              <option value="In Progress">{tr('actionStatus', 'In Progress')}</option>
-                            </select>
-                            <button
-                              type="button"
-                              className="btn-primary w-full"
-                              onClick={() => setActionState({ open: true, type: 'Submit Mitigation Action', mitigationActionId: action.id })}
-                            >
-                              Send for Risk Review
-                            </button>
+                            {canStartMitigationAction(action) ? (
+                              <button
+                                type="button"
+                                className="btn-secondary w-full"
+                                onClick={() => {
+                                  void updateMitigationAction(
+                                    action.id,
+                                    { status: 'In Progress' },
+                                    { useStaffEndpoint: true },
+                                  ).catch((error) => {
+                                    showErrorToast('Unable to start mitigation', error)
+                                  })
+                                }}
+                              >
+                                Start Action
+                              </button>
+                            ) : null}
+                            {canSubmitMitigationAction(action) ? (
+                              <button
+                                type="button"
+                                className="btn-primary w-full"
+                                onClick={() => setActionState({ open: true, type: 'Submit Mitigation Action', mitigationActionId: action.id })}
+                              >
+                                Send for Risk Review
+                              </button>
+                            ) : null}
                           </>
                         ) : null}
                         {canReviewMitigationAction(action) ? (
@@ -1621,38 +1655,49 @@ export default function RiskDetails() {
                 <input type="date" className="input-field" value={newAction.dueDate} onChange={(event) => setNewAction((current) => ({ ...current, dueDate: event.target.value }))} disabled={!canManageMitigationPlanStage} />
               </label>
               {canManageMitigationPlanStage ? (
-                <button
-                  type="button"
-                  className="btn-primary mt-4 w-full"
-                  onClick={async () => {
-                    if (!newAction.title || !newAction.dueDate) {
-                      addToast({ type: 'error', title: t('details.actionValidationTitle'), message: t('details.actionValidationDesc') })
-                      return
-                    }
-                    try {
-                      await addMitigationAction({
-                        riskId: risk.id,
-                        title: newAction.title,
-                        owner:
-                          risk.responsible ||
-                          currentUser?.username ||
-                          currentUser?.email ||
-                          currentUser?.id ||
-                          currentUser?.name ||
-                          '',
-                        dueDate: newAction.dueDate,
-                        status: 'Not Started',
-                        notes: '',
-                      })
-                      addToast({ title: t('details.actionAdded'), message: risk.id, type: 'success' })
-                      setNewAction({ title: '', dueDate: '' })
-                    } catch (error) {
-                      showErrorToast('Unable to add mitigation action', error)
-                    }
-                  }}
-                >
-                  {t('details.addMitigationAction')}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary mt-4 w-full"
+                    onClick={async () => {
+                      if (!newAction.title || !newAction.dueDate) {
+                        addToast({ type: 'error', title: t('details.actionValidationTitle'), message: t('details.actionValidationDesc') })
+                        return
+                      }
+                      try {
+                        await addMitigationAction({
+                          riskId: risk.id,
+                          title: newAction.title,
+                          owner:
+                            risk.responsible ||
+                            currentUser?.username ||
+                            currentUser?.email ||
+                            currentUser?.id ||
+                            currentUser?.name ||
+                            '',
+                          dueDate: newAction.dueDate,
+                          status: 'Not Started',
+                          notes: '',
+                        })
+                        addToast({ title: t('details.actionAdded'), message: risk.id, type: 'success' })
+                        setNewAction({ title: '', dueDate: '' })
+                      } catch (error) {
+                        showErrorToast('Unable to add mitigation action', error)
+                      }
+                    }}
+                  >
+                    {t('details.addMitigationAction')}
+                  </button>
+                  {canSendMitigationPlanToCommittee ? (
+                    <button
+                      type="button"
+                      className="btn-secondary mt-3 w-full"
+                      onClick={() => setActionState({ open: true, type: 'Send Mitigation Plan to Committee', mitigationActionId: null })}
+                    >
+                      Send to Committee Review
+                    </button>
+                  ) : null}
+                </>
               ) : (
                 <div className="mt-4 rounded-[24px] border border-dashed border-[#C9D4E7] bg-[#F7F8FB] p-4 text-sm leading-6 text-slate-600 dark:border-[#34507F] dark:bg-[#10203D] dark:text-slate-300">
                   {t('details.mitigationReadOnly')}
@@ -1807,6 +1852,8 @@ export default function RiskDetails() {
               ? 'Approve mitigation action'
             : actionState.type === 'Decline Mitigation Action'
               ? 'Decline mitigation action'
+            : actionState.type === 'Send Mitigation Plan to Committee'
+              ? 'Send mitigation plan to committee review'
             : actionState.type === 'Submit Response'
             ? t('details.submitResponseTitle')
             : actionState.type === 'Approve'
@@ -1832,6 +1879,8 @@ export default function RiskDetails() {
               ? `Approve "${selectedMitigationAction?.title || 'this mitigation action'}" for the next stage.`
             : actionState.type === 'Decline Mitigation Action'
               ? `Explain what must be reworked for "${selectedMitigationAction?.title || 'this mitigation action'}".`
+            : actionState.type === 'Send Mitigation Plan to Committee'
+              ? 'Send the fully approved mitigation plan to Committee Review 2.'
             : actionState.type === 'Submit Response'
             ? t('details.submitResponseDesc')
             : actionState.type === 'Request Info'
@@ -1849,6 +1898,8 @@ export default function RiskDetails() {
               ? 'Approve Action'
             : actionState.type === 'Decline Mitigation Action'
               ? 'Decline Action'
+            : actionState.type === 'Send Mitigation Plan to Committee'
+              ? 'Send to Committee Review'
             : actionState.type === 'Submit Response'
             ? t('details.submitResponseConfirm')
             : actionState.type === 'Approve'
@@ -1867,7 +1918,7 @@ export default function RiskDetails() {
                 : t('details.reject')
               : t('details.approve')
         }
-        requireComment={actionState.type !== 'Approve Mitigation Action'}
+        requireComment={actionState.type !== 'Approve Mitigation Action' && actionState.type !== 'Send Mitigation Plan to Committee'}
         confirmDisabled={requiresMitigationDepartment && !selectedDepartment}
         onClose={() => setActionState({ open: false, type: '', mitigationActionId: null })}
         onConfirm={applyDecision}
