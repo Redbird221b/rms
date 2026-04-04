@@ -1537,7 +1537,7 @@ export default function RiskDetails() {
 
             <div className="space-y-3 p-5">
               {actions.length ? (
-                actions.map((action) => (
+                actions.map((action, actionIndex) => (
                   <article
                     key={action.id}
                     className={`rounded-[24px] border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] ${getMitigationTone(action.status)}`}
@@ -1546,7 +1546,7 @@ export default function RiskDetails() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full border border-current/10 bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                            {action.id}
+                            {actionIndex + 1}
                           </span>
                           <span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium dark:border-[#2F4878]">
                             {tr('actionStatus', action.status) || action.status}
@@ -1556,8 +1556,24 @@ export default function RiskDetails() {
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
                             <UserRound className="h-3.5 w-3.5" />
-                            {t('details.owner')}: {action.owner}
+                            {t('details.responsible')}: {action.owner || 'Unassigned'}
                           </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
+                            <UserRound className="h-3.5 w-3.5" />
+                            {t('details.createdBy')}: {action.createdBy || '-'}
+                          </span>
+                          {action.completedBy ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Completed by: {action.completedBy}
+                            </span>
+                          ) : null}
+                          {action.completedAt ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              Completed: {formatDate(action.completedAt)}
+                            </span>
+                          ) : null}
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 dark:bg-white/5">
                             <CalendarDays className="h-3.5 w-3.5" />
                             {t('details.due')} {formatDate(action.dueDate)}
@@ -1682,6 +1698,12 @@ export default function RiskDetails() {
                           title: newAction.title,
                           owner:
                             risk.responsible ||
+                            currentUser?.username ||
+                            currentUser?.email ||
+                            currentUser?.id ||
+                            currentUser?.name ||
+                            '',
+                          createdBy:
                             currentUser?.username ||
                             currentUser?.email ||
                             currentUser?.id ||

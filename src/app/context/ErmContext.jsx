@@ -472,6 +472,19 @@ export function ErmProvider({ children }) {
       ),
     )
 
+    if (Object.prototype.hasOwnProperty.call(updates, 'responsible')) {
+      setMitigationActions((current) =>
+        current.map((action) =>
+          String(action.riskId) === String(riskId) && action.status !== 'Approved'
+            ? {
+                ...action,
+                owner: updates.responsible,
+              }
+            : action,
+        ),
+      )
+    }
+
     if (auditEvent) {
       await createActivityRecord(riskId, {
         ...auditEvent,
@@ -524,6 +537,15 @@ export function ErmProvider({ children }) {
       riskId: action.riskId,
       title: action.title,
       owner: action.owner,
+      createdBy:
+        action.createdBy ??
+        currentUser?.username ??
+        currentUser?.email ??
+        currentUser?.id ??
+        currentUser?.name ??
+        '',
+      completedBy: action.completedBy ?? '',
+      completedAt: action.completedAt ?? '',
       dueDate: action.dueDate,
       status: action.status ?? 'Not Started',
       notes: action.notes ?? '',
@@ -551,7 +573,7 @@ export function ErmProvider({ children }) {
       throw new Error('Mitigation action not found')
     }
 
-    await updateMitigationRecord(actionId, {
+    const persistedAction = await updateMitigationRecord(actionId, {
       ...currentAction,
       ...patch,
     }, { useStaffEndpoint })
@@ -563,6 +585,7 @@ export function ErmProvider({ children }) {
             ? {
                 ...action,
                 ...patch,
+                ...persistedAction,
                 updatedAt: new Date().toISOString(),
               }
             : action,

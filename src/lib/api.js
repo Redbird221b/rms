@@ -569,6 +569,9 @@ function normalizeMitigationRecord(entry) {
     riskId: typeof riskId === 'object' ? extractId(riskId) : riskId,
     title: entry?.title ?? '',
     owner: entry?.owner ?? '',
+    createdBy: entry?.created_by ?? entry?.createdBy ?? entry?.department_director ?? entry?.departmentDirector ?? '',
+    completedBy: entry?.completed_by ?? entry?.completedBy ?? '',
+    completedAt: entry?.completed_at ?? entry?.completedAt ?? '',
     dueDate: entry?.due_date ?? entry?.dueDate ?? '',
     status: normalizeMitigationStatus(entry?.status),
     notes: entry?.notes ?? '',
@@ -866,6 +869,9 @@ export async function createMitigationRecord(entry) {
     risk: payload?.data?.risk ?? payload?.risk ?? entry.riskId,
     title: payload?.data?.title ?? payload?.title ?? entry.title,
     owner: payload?.data?.owner ?? payload?.owner ?? entry.owner,
+    created_by: payload?.data?.created_by ?? payload?.created_by ?? entry.createdBy ?? '',
+    completed_by: payload?.data?.completed_by ?? payload?.completed_by ?? entry.completedBy ?? '',
+    completed_at: payload?.data?.completed_at ?? payload?.completed_at ?? entry.completedAt ?? '',
     due_date: payload?.data?.due_date ?? payload?.due_date ?? toIsoDateTime(entry.dueDate),
     status: payload?.data?.status ?? payload?.status ?? (MITIGATION_TO_API[entry.status] || entry.status),
     notes: payload?.data?.notes ?? payload?.notes ?? entry.notes ?? '',
@@ -879,7 +885,7 @@ export async function updateMitigationRecord(actionId, entry, { useStaffEndpoint
     ? `/app/api/crud/mitigation/staff/${actionId}/`
     : `/app/api/crud/mitigation/${actionId}/`
 
-  return request(path, {
+  const payload = await request(path, {
     method: 'PATCH',
     body: {
       risk: entry.riskId,
@@ -889,6 +895,21 @@ export async function updateMitigationRecord(actionId, entry, { useStaffEndpoint
       status: MITIGATION_TO_API[entry.status] || entry.status,
       notes: entry.notes ?? '',
     },
+  })
+
+  return normalizeMitigationRecord({
+    ...(payload ?? {}),
+    risk: payload?.risk ?? entry.riskId,
+    title: payload?.title ?? entry.title,
+    owner: payload?.owner ?? entry.owner,
+    created_by: payload?.created_by ?? entry.createdBy ?? '',
+    completed_by: payload?.completed_by ?? entry.completedBy ?? '',
+    completed_at: payload?.completed_at ?? entry.completedAt ?? '',
+    due_date: payload?.due_date ?? toIsoDateTime(entry.dueDate),
+    status: payload?.status ?? (MITIGATION_TO_API[entry.status] || entry.status),
+    notes: payload?.notes ?? entry.notes ?? '',
+    created_at: payload?.created_at ?? entry.createdAt ?? '',
+    updated_at: payload?.updated_at ?? new Date().toISOString(),
   })
 }
 
