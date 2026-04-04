@@ -20,10 +20,15 @@ export default function Dashboard() {
   const { filteredRisks, mitigationActions, queueStatuses, decisionLogs, isBackendConnected, backendError } = useErm()
   const { t, tr } = useI18n()
   const [loading] = useState(false)
+  const inactiveExposureStatuses = useMemo(() => new Set(['Closed', 'Risk Accepted', 'Rejected']), [])
+  const exposureRisks = useMemo(
+    () => filteredRisks.filter((risk) => !inactiveExposureStatuses.has(risk.status)),
+    [filteredRisks, inactiveExposureStatuses],
+  )
 
   const metrics = useMemo(() => {
-    const totalExpectedLoss = filteredRisks.reduce((sum, risk) => sum + risk.expectedLoss, 0)
-    const openRisks = filteredRisks.filter((risk) => !['Closed', 'Rejected'].includes(risk.status)).length
+    const totalExpectedLoss = exposureRisks.reduce((sum, risk) => sum + risk.expectedLoss, 0)
+    const openRisks = exposureRisks.length
     const pendingReviews = filteredRisks.filter((risk) => queueStatuses.includes(risk.status)).length
     const overdueActions = mitigationActions.filter((action) => {
       if (['Pending Risk Review', 'Approved'].includes(action.status)) {
@@ -33,19 +38,19 @@ export default function Dashboard() {
       return dueDate.getTime() < new Date().setHours(0, 0, 0, 0)
     }).length
     return { totalExpectedLoss, openRisks, pendingReviews, overdueActions }
-  }, [filteredRisks, mitigationActions, queueStatuses])
+  }, [exposureRisks, filteredRisks, mitigationActions, queueStatuses])
 
-  const trendData = useMemo(() => buildExpectedLossTrend(filteredRisks), [filteredRisks])
+  const trendData = useMemo(() => buildExpectedLossTrend(exposureRisks), [exposureRisks])
   const departmentData = useMemo(() => {
-    const map = filteredRisks.reduce((acc, risk) => {
+    const map = exposureRisks.reduce((acc, risk) => {
       acc[risk.department] = (acc[risk.department] || 0) + 1
       return acc
     }, {})
     return Object.entries(map)
       .map(([department, count]) => ({ department, count }))
       .sort((a, b) => b.count - a.count)
-  }, [filteredRisks])
-  const topRisks = useMemo(() => sortRisksByExpectedLoss(filteredRisks).slice(0, 8), [filteredRisks])
+  }, [exposureRisks])
+  const topRisks = useMemo(() => sortRisksByExpectedLoss(exposureRisks).slice(0, 8), [exposureRisks])
   const queueSnapshot = useMemo(
     () =>
       sortRisksByExpectedLoss(
@@ -114,7 +119,7 @@ export default function Dashboard() {
             <KpiCard
               label={t('dashboard.totalExpectedLoss')}
               value={formatCurrency(metrics.totalExpectedLoss)}
-              helper={t('dashboard.activeRisks', { count: filteredRisks.length })}
+              helper={t('dashboard.activeRisks', { count: exposureRisks.length })}
               icon={BadgeDollarSign}
             />
             <KpiCard
@@ -140,7 +145,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <RiskHeatmap risks={filteredRisks} />
+        <RiskHeatmap risks={exposureRisks} />
         <ExpectedLossTrendChart data={trendData} />
       </div>
 
