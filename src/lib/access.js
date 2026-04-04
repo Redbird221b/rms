@@ -223,13 +223,28 @@ export function isAwaitingDecisionResponse(risk, actorName) {
     return false
   }
 
+  const awaitingResponseStatuses = new Set([
+    'Info Requested by Risk Manager',
+    'Info Requested by Committee',
+    'Requested Info',
+  ])
+
+  if (!awaitingResponseStatuses.has(risk.status)) {
+    return false
+  }
+
   const auditItems = Array.isArray(risk.audit) ? [...risk.audit] : []
   if (!auditItems.length) {
     return false
   }
 
   const latestOwnDecision = auditItems
-    .filter((item) => item?.type === 'decision' && item?.by === actorName)
+    .filter(
+      (item) =>
+        item?.type === 'decision' &&
+        item?.by === actorName &&
+        item?.diff?.decisionType === 'Request Info',
+    )
     .sort((left, right) => toTimestamp(right?.at) - toTimestamp(left?.at))[0]
 
   if (!latestOwnDecision) {
