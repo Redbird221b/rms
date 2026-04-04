@@ -164,13 +164,24 @@ export default function RiskDetails() {
     Boolean(risk?.mitigationDepartment) &&
     sameDepartment(currentUser.department, risk.mitigationDepartment)
   const mitigationStageStatuses = ['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required']
+  const mitigationPlanEditableStatuses = [
+    'Committee Review 1',
+    'Committee Review 2',
+    'Accepted for Mitigation',
+    'In Mitigation',
+    'Additional Mitigation Required',
+  ]
   const isMitigationStage = mitigationStageStatuses.includes(risk?.status)
-  const canAssign = hasPermission(PERMISSIONS.ASSIGN_RESPONSIBLE) && isMitigationDepartmentDirector && isMitigationStage
+  const canManageMitigationPlanStatus = mitigationPlanEditableStatuses.includes(risk?.status)
+  const canAssign =
+    hasPermission(PERMISSIONS.ASSIGN_RESPONSIBLE) &&
+    isMitigationDepartmentDirector &&
+    canManageMitigationPlanStatus
   const canEditFinancialStage = canManageFinancials && isRiskManagerReview && !isActionLocked
   const canManageMitigationPlanStage =
     canManageMitigationPlan &&
     (isMitigationDepartmentDirector || hasAccessRole(currentUser, 'risk') || hasAccessRole(currentUser, 'committee')) &&
-    isMitigationStage &&
+    canManageMitigationPlanStatus &&
     !isActionLocked
   const canUpdateMitigationProgressStage =
     canUpdateMitigationProgress &&
