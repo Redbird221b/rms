@@ -951,10 +951,18 @@ export default function RiskDetails() {
 
   const workflowAnchorStatus = getWorkflowRailStatus(risk.status)
   const workflowAnchorIndex = WORKFLOW_RAIL.indexOf(workflowAnchorStatus)
+  const isClosedWorkflow = workflowAnchorStatus === 'Closed'
   const workflowSteps = WORKFLOW_RAIL.map((step, index) => ({
-    value: step,
-    state: index < workflowAnchorIndex ? 'complete' : index === workflowAnchorIndex ? 'active' : 'upcoming',
-  }))
+      value: step,
+    state:
+      index < workflowAnchorIndex
+        ? 'complete'
+        : index === workflowAnchorIndex
+          ? isClosedWorkflow
+            ? 'complete'
+            : 'active'
+          : 'upcoming',
+    }))
 
   const mitigationCounts = {
     approved: actions.filter((action) => action.status === 'Approved').length,
