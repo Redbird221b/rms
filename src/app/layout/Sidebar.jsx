@@ -194,7 +194,7 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        className="hidden lg:flex lg:h-screen lg:w-[88px] lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-[#D9E3F2] lg:bg-[#FBFCFE] lg:px-3 lg:py-4 dark:lg:border-[#243E71] dark:lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)]"
+        className="hidden lg:flex lg:h-screen lg:w-[88px] lg:shrink-0 lg:flex-col lg:items-center lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-[#D9E3F2] lg:bg-[#FBFCFE] lg:px-3 lg:py-4 dark:lg:border-[#243E71] dark:lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)]"
         onClick={() => openSidebar()}
       >
         <div className="w-full">
@@ -228,7 +228,7 @@ export default function Sidebar() {
               ref={panelRef}
               role="dialog"
               aria-modal="true"
-              className="fixed inset-y-0 left-0 z-50 w-[288px] border-r border-[#D9E3F2] bg-[#FBFCFE] px-5 py-5 text-slate-900 shadow-[0_24px_48px_rgba(15,23,42,0.18)] outline-none dark:border-[#243E71] dark:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] dark:text-white dark:shadow-[0_24px_48px_rgba(5,12,26,0.32)]"
+              className="fixed inset-y-0 left-0 z-50 w-[288px] overflow-y-auto overscroll-contain border-r border-[#D9E3F2] bg-[#FBFCFE] px-5 py-5 text-slate-900 shadow-[0_24px_48px_rgba(15,23,42,0.18)] outline-none dark:border-[#243E71] dark:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] dark:text-white dark:shadow-[0_24px_48px_rgba(5,12,26,0.32)]"
               initial={{ x: -28, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -24, opacity: 0 }}
