@@ -12,26 +12,28 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] text-slate-900 antialiased transition-colors dark:bg-[#0D162A] dark:text-slate-100">
-      <Sidebar />
-      <div>
-        <Topbar onMenuClick={() => openSidebar('left')} />
-        <main
-          aria-hidden={isSidebarOpen}
-          className="mx-auto max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8"
-        >
-          {showGlobalFilters ? <GlobalFilterBar /> : null}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </main>
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar onMenuClick={openSidebar} />
+          <main
+            aria-hidden={isSidebarOpen}
+            className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-4 sm:px-6 lg:px-8"
+          >
+            {showGlobalFilters ? <GlobalFilterBar /> : null}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
       </div>
     </div>
   )

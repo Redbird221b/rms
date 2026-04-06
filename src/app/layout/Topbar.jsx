@@ -1,7 +1,6 @@
-import { Bell, Menu, Moon, Search, Sun } from 'lucide-react'
+import { Bell, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useErm } from '../context/ErmContext'
 import { useI18n } from '../context/I18nContext'
 import ProfileMenu from '../../components/common/ProfileMenu'
@@ -14,6 +13,8 @@ export default function Topbar({ onMenuClick }) {
     setGlobalFilters,
     theme,
     setTheme,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
     notifications,
     unreadNotificationCount,
     markNotificationRead,
@@ -27,6 +28,7 @@ export default function Topbar({ onMenuClick }) {
     'h-10 rounded-xl border border-[#D9D9D9] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#0041B6] focus:ring-2 focus:ring-[#0041B6]/20 dark:border-[#274272] dark:bg-[#132547] dark:text-[#E5ECFF] dark:focus:ring-[#749BFF]/30'
   const iconButtonClass =
     'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#D9D9D9] bg-white text-slate-500 transition-colors hover:bg-[#E8EFFF] hover:text-[#0041B6] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59] dark:hover:text-white'
+  const desktopMenuLabel = isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'
 
   useEffect(() => {
     if (!isNotificationsOpen) {
@@ -61,6 +63,20 @@ export default function Topbar({ onMenuClick }) {
             onClick={onMenuClick}
           >
             <Menu className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            className={clsx(iconButtonClass, 'hidden lg:inline-flex')}
+            aria-label={desktopMenuLabel}
+            title={desktopMenuLabel}
+            onClick={toggleSidebarCollapsed}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
 
           <div className="relative min-w-0 flex-1">
