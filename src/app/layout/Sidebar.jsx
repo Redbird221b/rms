@@ -193,22 +193,24 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside
-        className="hidden lg:flex lg:h-screen lg:w-[88px] lg:shrink-0 lg:flex-col lg:items-center lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-[#D9E3F2] lg:bg-[#FBFCFE] lg:px-3 lg:py-4 dark:lg:border-[#243E71] dark:lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)]"
-        onClick={() => openSidebar()}
-      >
-        <div className="w-full">
-          <LogoLink />
-        </div>
+      <div className="hidden lg:block lg:w-[88px] lg:shrink-0">
+        <aside
+          className="lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[88px] lg:flex-col lg:items-center lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-[#D9E3F2] lg:bg-[#FBFCFE] lg:px-3 lg:py-4 dark:lg:border-[#243E71] dark:lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)]"
+          onClick={() => openSidebar()}
+        >
+          <div className="w-full">
+            <LogoLink />
+          </div>
 
-        <div className="my-5 h-px w-10 bg-[#E3EAF5] dark:bg-[#27406F]" />
+          <div className="my-5 h-px w-10 bg-[#E3EAF5] dark:bg-[#27406F]" />
 
-        <div className="w-full">
-          <RailNav availableItems={availableItems} />
-        </div>
+          <div className="w-full">
+            <RailNav availableItems={availableItems} />
+          </div>
 
-        <div className="mt-auto min-h-8 w-full" />
-      </aside>
+          <div className="mt-auto min-h-8 w-full" />
+        </aside>
+      </div>
 
       <AnimatePresence>
         {isSidebarOpen ? (
