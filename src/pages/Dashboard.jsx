@@ -95,7 +95,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       <PageHeader
         title={t('dashboard.title')}
         subtitle={t('dashboard.subtitle')}
@@ -144,16 +144,16 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <RiskHeatmap risks={exposureRisks} />
         <ExpectedLossTrendChart data={trendData} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="space-y-4 xl:col-span-2">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+        <div className="space-y-3 xl:col-span-2">
           <DepartmentRiskBarChart data={departmentData} />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="panel p-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="panel rounded-[22px] p-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.overdueMitigationActions')}</h3>
               <div className="mt-3 space-y-2">
                 {overdueActionItems.length ? (
@@ -173,7 +173,7 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <div className="panel p-4">
+            <div className="panel rounded-[22px] p-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.recentDecisions')}</h3>
               <div className="mt-3 space-y-2">
                 {recentDecisions.length ? (
@@ -198,7 +198,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="panel p-4">
+        <div className="panel rounded-[22px] p-4">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.topRisks')}</h3>
           <div className="mt-3 space-y-2">
             {topRisks.map((risk) => (
