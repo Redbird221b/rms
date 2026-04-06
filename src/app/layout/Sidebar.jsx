@@ -42,16 +42,16 @@ function LogoLink({ expanded = false, onClick }) {
         src="/uzcard-logo.png"
         alt="UZCARD"
         className={clsx(
-          'shrink-0 object-contain',
+          'shrink-0 object-contain dark:invert dark:brightness-110 dark:contrast-125',
           expanded ? 'h-11 w-auto max-w-[132px]' : 'h-11 w-auto max-w-[48px]',
         )}
       />
       {expanded ? (
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-black uppercase tracking-[0.22em] text-white">
+          <p className="truncate text-[15px] font-black uppercase tracking-[0.22em] text-[#18386F] dark:text-white">
             UZCARD
           </p>
-          <p className="truncate text-[12px] text-[#91A9D8]">Корпоративные риски</p>
+          <p className="truncate text-[12px] text-slate-500 dark:text-[#91A9D8]">Корпоративные риски</p>
         </div>
       ) : null}
     </Link>
@@ -81,8 +81,8 @@ function RailNav({ availableItems, onNavigate }) {
             className={clsx(
               'flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors duration-150',
               isActive
-                ? 'border-[#3B68B4] bg-[#17315E] text-white'
-                : 'border-transparent text-[#A9B9DC] hover:border-[#29497B] hover:bg-[#172744] hover:text-white',
+                ? 'border-[#C9DAFB] bg-[#EEF4FF] text-[#0B4FCF] dark:border-[#3B68B4] dark:bg-[#17315E] dark:text-white'
+                : 'border-transparent text-slate-500 hover:border-[#D8E5FF] hover:bg-[#F3F7FF] hover:text-[#0B4FCF] dark:text-[#A9B9DC] dark:hover:border-[#29497B] dark:hover:bg-[#172744] dark:hover:text-white',
             )}
           >
             <Icon className="h-[18px] w-[18px]" />
@@ -112,16 +112,16 @@ function PanelNav({ availableItems, onNavigate }) {
             className={clsx(
               'group flex min-h-12 items-center gap-3 rounded-[18px] border px-3.5 py-2.5 text-[15px] font-semibold transition-colors duration-150',
               isActive
-                ? 'border-[#3B68B4] bg-[#1F3E74] text-white'
-                : 'border-transparent text-[#D2DDF5] hover:border-[#29497B] hover:bg-[#172744] hover:text-white',
+                ? 'border-[#C9DAFB] bg-[#EEF4FF] text-[#0B4FCF] dark:border-[#3B68B4] dark:bg-[#1F3E74] dark:text-white'
+                : 'border-transparent text-slate-600 hover:border-[#D8E5FF] hover:bg-[#F3F7FF] hover:text-slate-900 dark:text-[#D2DDF5] dark:hover:border-[#29497B] dark:hover:bg-[#172744] dark:hover:text-white',
             )}
           >
             <span
               className={clsx(
                 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
                 isActive
-                  ? 'bg-white/10 text-white'
-                  : 'text-[#A9B9DC] group-hover:text-white',
+                  ? 'bg-[#DCE9FF] text-[#0B4FCF] dark:bg-white/10 dark:text-white'
+                  : 'text-slate-500 group-hover:text-[#0B4FCF] dark:text-[#A9B9DC] dark:group-hover:text-white',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -191,14 +191,14 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        className="hidden lg:flex lg:h-screen lg:w-[88px] lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-[#243E71] lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] lg:px-3 lg:py-4"
+        className="hidden lg:flex lg:h-screen lg:w-[88px] lg:shrink-0 lg:flex-col lg:items-center lg:border-r lg:border-[#D9E3F2] lg:bg-[#FBFCFE] lg:px-3 lg:py-4 dark:lg:border-[#243E71] dark:lg:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)]"
         onClick={() => openSidebar()}
       >
         <div className="w-full">
           <LogoLink />
         </div>
 
-        <div className="my-5 h-px w-10 bg-[#27406F]" />
+        <div className="my-5 h-px w-10 bg-[#E3EAF5] dark:bg-[#27406F]" />
 
         <div className="w-full">
           <RailNav availableItems={availableItems} />
@@ -225,14 +225,14 @@ export default function Sidebar() {
               ref={panelRef}
               role="dialog"
               aria-modal="true"
-              className="fixed inset-y-0 left-0 z-50 w-[288px] border-r border-[#243E71] bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] px-5 py-5 text-white shadow-[0_24px_48px_rgba(5,12,26,0.32)] outline-none"
+              className="fixed inset-y-0 left-0 z-50 w-[288px] border-r border-[#D9E3F2] bg-[#FBFCFE] px-5 py-5 text-slate-900 shadow-[0_24px_48px_rgba(15,23,42,0.18)] outline-none dark:border-[#243E71] dark:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] dark:text-white dark:shadow-[0_24px_48px_rgba(5,12,26,0.32)]"
               initial={{ x: -28, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -24, opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
               <div className="flex h-full flex-col">
-                <div className="border-b border-[#27406F] pb-5">
+                <div className="border-b border-[#E3EAF5] pb-5 dark:border-[#27406F]">
                   <LogoLink expanded onClick={() => setIsSidebarOpen(false)} />
                 </div>
 
