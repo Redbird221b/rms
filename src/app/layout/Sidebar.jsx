@@ -42,12 +42,12 @@ function LogoLink({ expanded = false, centered = false, onClick }) {
         src="/uzcard-logo.png"
         alt="UZCARD"
         className={clsx(
-          'shrink-0 dark:invert dark:brightness-110 dark:contrast-125',
+          'shrink-0 object-contain dark:invert dark:brightness-110 dark:contrast-125',
           centered
-            ? 'h-[112px] w-[172px] object-cover object-center'
+            ? 'h-[138px] w-[188px]'
             : expanded
-              ? 'h-12 w-[108px] object-cover object-center'
-              : 'h-11 w-[44px] object-cover object-center',
+              ? 'h-[60px] w-[128px]'
+              : 'h-[52px] w-[52px]',
         )}
       />
       {centered ? (
