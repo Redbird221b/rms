@@ -24,16 +24,17 @@ const navItems = [
   { labelKey: 'nav.admin', path: '/admin', icon: Settings2, permission: PERMISSIONS.MANAGE_REFERENCE_DATA },
 ]
 
-function LogoLink({ expanded = false, centered = false, onClick }) {
+function LogoLink({ expanded = false, centered = false, onClick, tabbable = true }) {
   return (
     <Link
       to="/dashboard"
+      tabIndex={tabbable ? undefined : -1}
       onClick={(event) => {
         event.stopPropagation()
         onClick?.()
       }}
       className={clsx(
-        'group flex items-center transition-opacity hover:opacity-95',
+        'group flex items-center outline-none transition-opacity hover:opacity-95 focus:outline-none focus-visible:outline-none',
         centered ? 'flex-col justify-center text-center' : expanded ? 'gap-3' : 'justify-center',
       )}
       title={!expanded ? 'UZCARD' : undefined}
@@ -161,12 +162,12 @@ export default function Sidebar() {
     document.body.style.overflow = 'hidden'
     const panel = panelRef.current
     const focusable = panel?.querySelectorAll(
-      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      'a[href]:not([tabindex="-1"]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
     const first = focusable?.[0]
     const last = focusable?.[focusable.length - 1]
     const previousActive = document.activeElement
-    window.setTimeout(() => first?.focus(), 40)
+    window.setTimeout(() => panel?.focus(), 40)
 
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -178,7 +179,7 @@ export default function Sidebar() {
         return
       }
 
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
         event.preventDefault()
         last?.focus()
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -234,6 +235,7 @@ export default function Sidebar() {
               ref={panelRef}
               role="dialog"
               aria-modal="true"
+              tabIndex={-1}
               className="fixed inset-y-0 left-0 z-50 w-[288px] overflow-y-auto overscroll-contain border-r border-[#D9E3F2] bg-[#FBFCFE] px-5 py-5 text-slate-900 shadow-[0_24px_48px_rgba(15,23,42,0.18)] outline-none dark:border-[#243E71] dark:bg-[linear-gradient(180deg,#12264A_0%,#101F3E_100%)] dark:text-white dark:shadow-[0_24px_48px_rgba(5,12,26,0.32)]"
               initial={{ x: -28, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -242,7 +244,7 @@ export default function Sidebar() {
             >
               <div className="flex h-full flex-col">
                 <div className="border-b border-[#E3EAF5] pb-5 dark:border-[#27406F]">
-                  <LogoLink expanded centered onClick={() => setIsSidebarOpen(false)} />
+                  <LogoLink expanded centered tabbable={false} onClick={() => setIsSidebarOpen(false)} />
                 </div>
 
                 <div className="mt-5 flex-1">
