@@ -7,7 +7,13 @@ export default function GlobalFilterBar() {
   const { t, tr } = useI18n()
 
   return (
-    <section className="panel mb-4 p-3">
+    <section className="panel mb-4 rounded-[24px] p-4 sm:p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Фильтры</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Диапазон дат, подразделение и текущий статус риска.</p>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
         <label className="space-y-1">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('filters.dateFrom')}</span>

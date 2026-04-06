@@ -18,7 +18,7 @@ export default function AppShell() {
           <Topbar onMenuClick={openSidebar} />
           <main
             aria-hidden={isSidebarOpen}
-            className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-4 sm:px-6 lg:px-10 xl:px-12"
+            className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col px-4 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4 lg:px-8 xl:px-10"
           >
             {showGlobalFilters ? <GlobalFilterBar /> : null}
             <AnimatePresence mode="wait">
@@ -28,6 +28,7 @@ export default function AppShell() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="flex-1"
               >
                 <Outlet />
               </motion.div>

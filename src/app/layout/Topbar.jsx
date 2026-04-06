@@ -24,9 +24,9 @@ export default function Topbar({ onMenuClick }) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const notificationsRef = useRef(null)
   const controlClass =
-    'h-10 rounded-xl border border-[#D9D9D9] bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-[#0041B6] focus:ring-2 focus:ring-[#0041B6]/20 dark:border-[#274272] dark:bg-[#132547] dark:text-[#E5ECFF] dark:focus:ring-[#749BFF]/30'
+    'h-11 rounded-2xl border border-[#D5DEEB] bg-white px-4 text-sm text-slate-700 outline-none transition-colors focus:border-[#0B4FCF] focus:ring-4 focus:ring-[#0B4FCF]/10 dark:border-[#274272] dark:bg-[#132547] dark:text-[#E5ECFF] dark:focus:border-[#7AA2FF] dark:focus:ring-[#749BFF]/20'
   const iconButtonClass =
-    'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#D9D9D9] bg-white text-slate-500 transition-colors hover:bg-[#E8EFFF] hover:text-[#0041B6] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59] dark:hover:text-white'
+    'inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#D5DEEB] bg-white text-slate-500 transition-colors hover:border-[#BED1F8] hover:bg-[#EEF4FF] hover:text-[#0B4FCF] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:border-[#4569A8] dark:hover:bg-[#1A2F59] dark:hover:text-white'
 
   useEffect(() => {
     if (!isNotificationsOpen) {
@@ -46,14 +46,19 @@ export default function Topbar({ onMenuClick }) {
   return (
     <header
       className={clsx(
-        'sticky top-0 z-10 border-b backdrop-blur-xl',
-        isDark
-          ? 'border-[#233B63] bg-[#0F1B34]/94 shadow-[0_1px_0_rgba(3,8,20,0.35)]'
-          : 'border-[#D6DDE8] bg-[#F5F7FB]/95 shadow-[0_1px_0_rgba(15,23,42,0.05)]',
+        'sticky top-0 z-20 px-4 pb-1 pt-3 backdrop-blur-xl sm:px-6 lg:px-8 xl:px-10',
+        isDark ? 'bg-[#0D162A]/78' : 'bg-[#F4F6FA]/78',
       )}
     >
-      <div className="mx-auto max-w-[1680px] px-4 py-2.5 sm:px-6 lg:px-10 xl:px-12">
-        <div className="flex w-full items-center gap-3">
+      <div
+        className={clsx(
+          'mx-auto flex max-w-[1680px] items-center gap-3 rounded-[24px] border px-3 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.06)] sm:px-4',
+          isDark
+            ? 'border-[#233B63] bg-[#0F1B34]/94 shadow-[0_14px_38px_rgba(2,8,22,0.28)]'
+            : 'border-[#DCE4EF] bg-white/92',
+        )}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
             className={clsx(iconButtonClass, 'lg:hidden')}
@@ -63,7 +68,7 @@ export default function Topbar({ onMenuClick }) {
             <Menu className="h-4 w-4" />
           </button>
 
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1 max-w-[720px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-[#9EB4E2]" />
             <input
               type="search"
@@ -104,7 +109,7 @@ export default function Topbar({ onMenuClick }) {
               </button>
 
               {isNotificationsOpen ? (
-                <div className="absolute right-0 top-12 z-20 w-[360px] rounded-2xl border border-[#D9D9D9] bg-white p-3 shadow-xl dark:border-[#274272] dark:bg-[#132547]">
+                <div className="absolute right-0 top-14 z-20 w-[360px] rounded-2xl border border-[#D9D9D9] bg-white p-3 shadow-xl dark:border-[#274272] dark:bg-[#132547]">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('top.notifications')}</h3>
