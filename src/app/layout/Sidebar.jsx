@@ -41,14 +41,14 @@ function SidebarPanel({
   return (
     <div
       className={clsx(
-        'flex h-full flex-col border-r border-[#D7E1F0] bg-[#FDFEFF] text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.05)] dark:border-[#21395F] dark:bg-[#0F1B34] dark:text-slate-100',
-        collapsed ? 'items-center px-3 py-5' : 'px-4 py-5',
+        'flex h-full flex-col overflow-hidden border-r border-[#D7E1F0] bg-[#FBFCFE] text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.05)] dark:border-[#21395F] dark:bg-[#0F1B34] dark:text-slate-100',
+        collapsed ? 'items-center px-3 py-4' : 'px-5 py-5',
       )}
     >
       <div
         className={clsx(
-          'mb-8 flex w-full items-start',
-          collapsed ? 'flex-col items-center gap-3' : 'justify-between gap-3',
+          'mb-6 flex w-full border-b border-[#E6EDF7] pb-5 dark:border-[#1C3156]',
+          collapsed ? 'flex-col items-center gap-3' : 'items-center justify-between gap-3',
         )}
       >
         <Link
@@ -60,15 +60,15 @@ function SidebarPanel({
           )}
           title={collapsed ? 'UZCARD' : undefined}
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0D74D1_0%,#0041B6_55%,#002A76_100%)] text-white shadow-[0_10px_24px_rgba(0,65,182,0.28)] ring-1 ring-[#8DB0FF]/35">
-            <span className="text-[13px] font-black tracking-[0.22em]">UZ</span>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0D74D1_0%,#0041B6_55%,#002A76_100%)] text-white shadow-[0_10px_24px_rgba(0,65,182,0.24)] ring-1 ring-[#8DB0FF]/35">
+            <span className="text-[12px] font-black tracking-[0.18em]">UZ</span>
           </div>
           {!collapsed ? (
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-black uppercase tracking-[0.28em] text-[#17346A] dark:text-white">
+              <p className="truncate text-[14px] font-black uppercase tracking-[0.18em] text-[#17346A] dark:text-white">
                 UZCARD
               </p>
-              <p className="truncate text-xs text-slate-500 dark:text-blue-100/80">{t('nav.portalTitle')}</p>
+              <p className="truncate text-[12px] text-slate-500 dark:text-blue-100/80">{t('nav.portalTitle')}</p>
             </div>
           ) : null}
         </Link>
@@ -77,7 +77,7 @@ function SidebarPanel({
           {typeof onToggleCollapsed === 'function' ? (
             <button
               type="button"
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#D7E1F0] bg-white text-slate-500 transition-colors hover:bg-[#EEF4FF] hover:text-[#0041B6] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59] dark:hover:text-white lg:inline-flex"
+              className="hidden h-9 w-9 items-center justify-center rounded-xl border border-[#D7E1F0] bg-white text-slate-500 transition-colors hover:bg-[#EEF4FF] hover:text-[#0041B6] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59] dark:hover:text-white lg:inline-flex"
               aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
               title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
               onClick={onToggleCollapsed}
@@ -99,7 +99,7 @@ function SidebarPanel({
         </div>
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-1.5">
         {availableItems.map((item) => {
           const isActive =
             location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
@@ -112,24 +112,24 @@ function SidebarPanel({
               onClick={onNavigate}
               title={collapsed ? t(item.labelKey) : undefined}
               className={clsx(
-                'group flex w-full min-h-12 items-center rounded-2xl text-sm font-medium transition-colors duration-150',
+                'group flex w-full items-center rounded-xl text-[15px] font-semibold transition-colors duration-150',
                 collapsed
-                  ? 'justify-center px-0'
-                  : 'gap-3 px-3 py-2.5',
+                  ? 'h-11 justify-center px-0'
+                  : 'min-h-11 gap-3 px-3 py-2.5',
                 isActive
-                  ? 'border border-[#CFE0FF] bg-[#EEF4FF] text-[#0041B6] shadow-[0_8px_18px_rgba(0,65,182,0.08)] dark:border-[#35558E] dark:bg-[#16305D] dark:text-white'
-                  : 'text-slate-600 hover:bg-[#F3F6FB] hover:text-slate-900 dark:text-[#C9D8F7] dark:hover:bg-white/8 dark:hover:text-white',
+                  ? 'border border-[#D8E5FF] bg-[#EEF4FF] text-[#0041B6] shadow-[0_6px_14px_rgba(0,65,182,0.07)] dark:border-[#35558E] dark:bg-[#16305D] dark:text-white'
+                  : 'text-slate-600 hover:bg-[#F4F7FB] hover:text-slate-900 dark:text-[#C9D8F7] dark:hover:bg-white/8 dark:hover:text-white',
               )}
             >
               <span
                 className={clsx(
-                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
+                  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
                   isActive
                     ? 'bg-white text-[#0041B6] shadow-sm dark:bg-white/12 dark:text-white'
-                    : 'text-slate-500 group-hover:bg-white group-hover:text-[#0041B6] dark:text-[#9EB4E2] dark:group-hover:bg-white/10 dark:group-hover:text-white',
+                    : 'text-slate-500 group-hover:text-[#0041B6] dark:text-[#9EB4E2] dark:group-hover:text-white',
                 )}
               >
-                <Icon className="h-4.5 w-4.5 shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" />
               </span>
               {!collapsed ? <span className="min-w-0 truncate">{t(item.labelKey)}</span> : null}
             </Link>
@@ -204,7 +204,7 @@ export default function Sidebar() {
       <aside
         className={clsx(
           'hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:shrink-0 lg:transition-[width] lg:duration-200 lg:ease-out',
-          isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[264px]',
+          isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[288px]',
         )}
       >
         <SidebarPanel

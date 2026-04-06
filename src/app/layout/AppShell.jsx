@@ -18,7 +18,7 @@ export default function AppShell() {
           <Topbar onMenuClick={openSidebar} />
           <main
             aria-hidden={isSidebarOpen}
-            className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-4 sm:px-6 lg:px-8"
+            className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-4 sm:px-6 lg:px-10 xl:px-12"
           >
             {showGlobalFilters ? <GlobalFilterBar /> : null}
             <AnimatePresence mode="wait">
