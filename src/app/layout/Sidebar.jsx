@@ -42,8 +42,8 @@ function LogoLink({ expanded = false, onClick }) {
         src="/uzcard-logo.png"
         alt="UZCARD"
         className={clsx(
-          'shrink-0 rounded-[20px] object-cover shadow-[0_12px_24px_rgba(6,66,182,0.28)] ring-1 ring-white/10',
-          expanded ? 'h-12 w-12' : 'h-12 w-12',
+          'shrink-0 object-contain',
+          expanded ? 'h-11 w-auto max-w-[132px]' : 'h-11 w-auto max-w-[48px]',
         )}
       />
       {expanded ? (
@@ -198,24 +198,7 @@ export default function Sidebar() {
           <LogoLink />
         </div>
 
-        <div className="mt-4 flex w-full justify-center">
-          <button
-            type="button"
-            aria-label={t('top.openNavigation')}
-            title={t('top.openNavigation')}
-            onClick={(event) => {
-              event.stopPropagation()
-              openSidebar()
-            }}
-            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#35558E] bg-[#17315E] text-white transition-colors hover:bg-[#1C3A6F]"
-          >
-            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-              <path d="M8 5l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="my-4 h-px w-10 bg-[#27406F]" />
+        <div className="my-5 h-px w-10 bg-[#27406F]" />
 
         <div className="w-full">
           <RailNav availableItems={availableItems} />
