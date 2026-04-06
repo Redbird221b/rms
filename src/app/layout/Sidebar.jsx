@@ -24,7 +24,7 @@ const navItems = [
   { labelKey: 'nav.admin', path: '/admin', icon: Settings2, permission: PERMISSIONS.MANAGE_REFERENCE_DATA },
 ]
 
-function LogoLink({ expanded = false, onClick }) {
+function LogoLink({ expanded = false, centered = false, onClick }) {
   return (
     <Link
       to="/dashboard"
@@ -34,7 +34,7 @@ function LogoLink({ expanded = false, onClick }) {
       }}
       className={clsx(
         'group flex items-center transition-opacity hover:opacity-95',
-        expanded ? 'gap-3' : 'justify-center',
+        centered ? 'flex-col justify-center text-center' : expanded ? 'gap-3' : 'justify-center',
       )}
       title={!expanded ? 'UZCARD' : undefined}
     >
@@ -43,14 +43,17 @@ function LogoLink({ expanded = false, onClick }) {
         alt="UZCARD"
         className={clsx(
           'shrink-0 object-contain dark:invert dark:brightness-110 dark:contrast-125',
-          expanded ? 'h-11 w-auto max-w-[132px]' : 'h-11 w-auto max-w-[48px]',
+          centered ? 'h-[76px] w-auto max-w-[180px]' : expanded ? 'h-11 w-auto max-w-[132px]' : 'h-11 w-auto max-w-[48px]',
         )}
       />
-      {expanded ? (
+      {centered ? (
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-black uppercase tracking-[0.22em] text-[#18386F] dark:text-white">
-            UZCARD
+          <p className="mt-3 truncate text-[14px] font-semibold text-[#18386F] dark:text-white">
+            Система контроля рисков
           </p>
+        </div>
+      ) : expanded ? (
+        <div className="min-w-0">
           <p className="truncate text-[12px] text-slate-500 dark:text-[#91A9D8]">Корпоративные риски</p>
         </div>
       ) : null}
@@ -233,7 +236,7 @@ export default function Sidebar() {
             >
               <div className="flex h-full flex-col">
                 <div className="border-b border-[#E3EAF5] pb-5 dark:border-[#27406F]">
-                  <LogoLink expanded onClick={() => setIsSidebarOpen(false)} />
+                  <LogoLink expanded centered onClick={() => setIsSidebarOpen(false)} />
                 </div>
 
                 <div className="mt-5 flex-1">
