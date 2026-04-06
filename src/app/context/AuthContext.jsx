@@ -261,20 +261,6 @@ function mergeBackendProfile(currentUser, profile) {
   }
 }
 
-async function resolveCurrentUser() {
-  const currentUser = buildCurrentUser()
-  if (!currentUser) {
-    return null
-  }
-
-  try {
-    const profile = await getCurrentProfile()
-    return mergeBackendProfile(currentUser, profile)
-  } catch {
-    return currentUser
-  }
-}
-
 export function AuthProvider({ children }) {
   const { language } = useI18n()
   const [state, setState] = useState({
@@ -293,14 +279,7 @@ export function AuthProvider({ children }) {
       const currentRunId = syncRunId + 1
       syncRunId = currentRunId
 
-      const currentUser = keycloak.authenticated ? await resolveCurrentUser() : null
-      if (!active) {
-        return
-      }
-
-      if (currentRunId !== syncRunId) {
-        return
-      }
+      const currentUser = keycloak.authenticated ? buildCurrentUser() : null
 
       setState({
         isReady: true,
@@ -308,6 +287,24 @@ export function AuthProvider({ children }) {
         currentUser,
         error,
       })
+
+      if (!currentUser) {
+        return
+      }
+
+      try {
+        const profile = await getCurrentProfile()
+        if (!active || currentRunId !== syncRunId) {
+          return
+        }
+
+        setState((current) => ({
+          ...current,
+          currentUser: mergeBackendProfile(currentUser, profile),
+        }))
+      } catch {
+        // Do not block auth readiness on backend profile enrichment.
+      }
     }
 
     keycloak.onAuthSuccess = () => {
@@ -382,13 +379,26 @@ export function AuthProvider({ children }) {
       refreshSession: async () => {
         try {
           await initKeycloak()
-          const currentUser = getKeycloakClient().authenticated ? await resolveCurrentUser() : null
+          const keycloakClient = getKeycloakClient()
+          const currentUser = keycloakClient.authenticated ? buildCurrentUser() : null
           setState({
             isReady: true,
             isAuthenticated: Boolean(currentUser),
             currentUser,
             error: '',
           })
+
+          if (currentUser) {
+            void getCurrentProfile()
+              .then((profile) => {
+                setState((current) => ({
+                  ...current,
+                  currentUser: mergeBackendProfile(currentUser, profile),
+                }))
+              })
+              .catch(() => {})
+          }
+
           return { ok: true }
         } catch {
           setState((current) => ({
