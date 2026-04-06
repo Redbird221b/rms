@@ -28,7 +28,6 @@ const STORAGE_KEYS = {
   globalFilters: 'erm_global_filters_v3',
   theme: 'erm_theme_v1',
   notificationReads: 'erm_notification_reads_v1',
-  sidebarCollapsed: 'erm_sidebar_collapsed_v1',
 }
 
 const defaultGlobalFilters = {
@@ -179,9 +178,6 @@ export function ErmProvider({ children }) {
   )
   const [toasts, setToasts] = useState([])
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
-    loadFromStorage(STORAGE_KEYS.sidebarCollapsed, false),
-  )
   const [isBackendConnected, setIsBackendConnected] = useState(false)
   const [isBackendLoading, setIsBackendLoading] = useState(false)
   const [backendError, setBackendError] = useState('')
@@ -363,10 +359,6 @@ export function ErmProvider({ children }) {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.notificationReads, notificationReads)
   }, [notificationReads])
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.sidebarCollapsed, isSidebarCollapsed)
-  }, [isSidebarCollapsed])
 
   const setGlobalFilters = (nextFilters) => {
     setGlobalFiltersState((current) =>
@@ -847,7 +839,6 @@ export function ErmProvider({ children }) {
     theme,
     toasts,
     isSidebarOpen,
-    isSidebarCollapsed,
     departments,
     departmentItems,
     categories,
@@ -881,9 +872,7 @@ export function ErmProvider({ children }) {
     runWithDeferredSync,
     setTheme,
     setIsSidebarOpen,
-    setIsSidebarCollapsed,
     openSidebar: () => setIsSidebarOpen(true),
-    toggleSidebarCollapsed: () => setIsSidebarCollapsed((current) => !current),
   }
 
   return <ErmContext.Provider value={value}>{children}</ErmContext.Provider>
