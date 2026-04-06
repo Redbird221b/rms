@@ -52,7 +52,7 @@ export default function Topbar({ onMenuClick }) {
     >
       <div
         className={clsx(
-          'mx-auto flex max-w-[1680px] items-center gap-3 rounded-[22px] border px-3 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.06)] sm:px-4',
+          'mx-auto flex w-full max-w-[1600px] items-center gap-3 rounded-[22px] border px-3 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.06)] sm:px-4',
           isDark
             ? 'border-[#233B63] bg-[#0F1B34]/94 shadow-[0_14px_38px_rgba(2,8,22,0.28)]'
             : 'border-[#DCE4EF] bg-white/92',
