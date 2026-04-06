@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   LayoutDashboard,
   PlusSquare,
@@ -31,6 +33,7 @@ function SidebarPanel({
   onNavigate,
   showCloseButton = false,
   onClose,
+  onToggleCollapsed,
 }) {
   const location = useLocation()
   const { t } = useI18n()
@@ -38,7 +41,7 @@ function SidebarPanel({
   return (
     <div
       className={clsx(
-        'flex h-full flex-col border-r border-[#1E3767] bg-[linear-gradient(180deg,#10244B_0%,#0D1C36_65%,#091625_100%)] text-white shadow-xl',
+        'flex h-full flex-col border-r border-[#D7E1F0] bg-[#FDFEFF] text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.05)] dark:border-[#21395F] dark:bg-[#0F1B34] dark:text-slate-100',
         collapsed ? 'items-center px-3 py-5' : 'px-4 py-5',
       )}
     >
@@ -57,29 +60,43 @@ function SidebarPanel({
           )}
           title={collapsed ? 'UZCARD' : undefined}
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0D74D1_0%,#0041B6_55%,#002A76_100%)] text-white shadow-[0_10px_24px_rgba(0,65,182,0.35)] ring-1 ring-white/10">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0D74D1_0%,#0041B6_55%,#002A76_100%)] text-white shadow-[0_10px_24px_rgba(0,65,182,0.28)] ring-1 ring-[#8DB0FF]/35">
             <span className="text-[13px] font-black tracking-[0.22em]">UZ</span>
           </div>
           {!collapsed ? (
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-black uppercase tracking-[0.28em] text-white">
+              <p className="truncate text-[15px] font-black uppercase tracking-[0.28em] text-[#17346A] dark:text-white">
                 UZCARD
               </p>
-              <p className="truncate text-xs text-blue-100/80">{t('nav.portalTitle')}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-blue-100/80">{t('nav.portalTitle')}</p>
             </div>
           ) : null}
         </Link>
 
-        {showCloseButton ? (
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/18"
-            aria-label={t('common.close')}
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        ) : null}
+        <div className={clsx('flex shrink-0 items-center gap-2', collapsed ? 'flex-col' : 'flex-row')}>
+          {typeof onToggleCollapsed === 'function' ? (
+            <button
+              type="button"
+              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#D7E1F0] bg-white text-slate-500 transition-colors hover:bg-[#EEF4FF] hover:text-[#0041B6] dark:border-[#274272] dark:bg-[#132547] dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59] dark:hover:text-white lg:inline-flex"
+              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              onClick={onToggleCollapsed}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          ) : null}
+
+          {showCloseButton ? (
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#D7E1F0] bg-white text-slate-600 transition-colors hover:bg-[#EEF4FF] hover:text-[#0041B6] dark:border-white/15 dark:bg-white/10 dark:text-white dark:backdrop-blur dark:hover:bg-white/18"
+              aria-label={t('common.close')}
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -100,23 +117,25 @@ function SidebarPanel({
                   ? 'justify-center px-0'
                   : 'gap-3 px-3 py-2.5',
                 isActive
-                  ? 'bg-[#DB4300] text-white shadow-sm'
-                  : 'text-blue-50/88 hover:bg-white/10 hover:text-white',
+                  ? 'border border-[#CFE0FF] bg-[#EEF4FF] text-[#0041B6] shadow-[0_8px_18px_rgba(0,65,182,0.08)] dark:border-[#35558E] dark:bg-[#16305D] dark:text-white'
+                  : 'text-slate-600 hover:bg-[#F3F6FB] hover:text-slate-900 dark:text-[#C9D8F7] dark:hover:bg-white/8 dark:hover:text-white',
               )}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <span
+                className={clsx(
+                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
+                  isActive
+                    ? 'bg-white text-[#0041B6] shadow-sm dark:bg-white/12 dark:text-white'
+                    : 'text-slate-500 group-hover:bg-white group-hover:text-[#0041B6] dark:text-[#9EB4E2] dark:group-hover:bg-white/10 dark:group-hover:text-white',
+                )}
+              >
+                <Icon className="h-4.5 w-4.5 shrink-0" />
+              </span>
               {!collapsed ? <span className="min-w-0 truncate">{t(item.labelKey)}</span> : null}
             </Link>
           )
         })}
       </nav>
-
-      {!collapsed ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs text-blue-100/78">
-          <p className="font-semibold uppercase tracking-[0.22em] text-white/85">UZCARD</p>
-          <p className="mt-1 leading-5">{t('nav.portalSubtitle')}</p>
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -126,6 +145,7 @@ export default function Sidebar() {
     isSidebarOpen,
     isSidebarCollapsed,
     setIsSidebarOpen,
+    toggleSidebarCollapsed,
   } = useErm()
   const { hasPermission } = useAuth()
   const { t } = useI18n()
@@ -184,13 +204,14 @@ export default function Sidebar() {
       <aside
         className={clsx(
           'hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:shrink-0 lg:transition-[width] lg:duration-200 lg:ease-out',
-          isSidebarCollapsed ? 'lg:w-24' : 'lg:w-72',
+          isSidebarCollapsed ? 'lg:w-[92px]' : 'lg:w-[264px]',
         )}
       >
         <SidebarPanel
           availableItems={availableItems}
           collapsed={isSidebarCollapsed}
           onNavigate={undefined}
+          onToggleCollapsed={toggleSidebarCollapsed}
         />
       </aside>
 
@@ -224,6 +245,7 @@ export default function Sidebar() {
                 onNavigate={() => setIsSidebarOpen(false)}
                 showCloseButton
                 onClose={() => setIsSidebarOpen(false)}
+                onToggleCollapsed={undefined}
               />
             </motion.aside>
           </>
