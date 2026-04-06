@@ -112,7 +112,7 @@ function SidebarPanel({
               onClick={onNavigate}
               title={collapsed ? t(item.labelKey) : undefined}
               className={clsx(
-                'group flex w-full items-center text-[15px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150',
+                'group flex items-center text-[15px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150',
                 collapsed
                   ? 'mx-auto h-12 w-12 justify-center rounded-2xl px-0'
                   : 'min-h-11 gap-3 rounded-[18px] px-3.5 py-2.5',
