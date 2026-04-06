@@ -15,25 +15,27 @@ export default function AppShell() {
       <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar onMenuClick={openSidebar} />
-          <main
-            aria-hidden={isSidebarOpen}
-            className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 pb-6 pt-3 sm:px-6 sm:pb-8 sm:pt-4 lg:px-8 xl:px-10"
-          >
-            {showGlobalFilters ? <GlobalFilterBar /> : null}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="flex-1"
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
-          </main>
+          <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 sm:px-6 lg:px-8 xl:px-10">
+            <Topbar onMenuClick={openSidebar} />
+            <main
+              aria-hidden={isSidebarOpen}
+              className="flex flex-1 flex-col pb-6 pt-3 sm:pb-8 sm:pt-4"
+            >
+              {showGlobalFilters ? <GlobalFilterBar /> : null}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="flex-1"
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
+            </main>
+          </div>
         </div>
       </div>
     </div>

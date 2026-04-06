@@ -46,13 +46,13 @@ export default function Topbar({ onMenuClick }) {
   return (
     <header
       className={clsx(
-        'sticky top-0 z-20 px-4 pb-1 pt-3 backdrop-blur-xl sm:px-6 lg:px-8 xl:px-10',
+        'sticky top-0 z-20 pb-1 pt-3 backdrop-blur-xl',
         isDark ? 'bg-[#0D162A]/78' : 'bg-[#F4F6FA]/78',
       )}
     >
       <div
         className={clsx(
-          'mx-auto flex w-full max-w-[1600px] items-center gap-3 rounded-[22px] border px-3 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.06)] sm:px-4',
+          'flex w-full items-center gap-3 rounded-[22px] border px-3 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.06)] sm:px-4',
           isDark
             ? 'border-[#233B63] bg-[#0F1B34]/94 shadow-[0_14px_38px_rgba(2,8,22,0.28)]'
             : 'border-[#DCE4EF] bg-white/92',
