@@ -114,7 +114,7 @@ function SidebarPanel({
               className={clsx(
                 'group flex w-full items-center rounded-xl text-[15px] font-semibold transition-colors duration-150',
                 collapsed
-                  ? 'h-11 justify-center px-0'
+                  ? 'mx-auto h-[52px] w-[52px] justify-center px-0'
                   : 'min-h-11 gap-3 px-3 py-2.5',
                 isActive
                   ? 'border border-[#D8E5FF] bg-[#EEF4FF] text-[#0041B6] shadow-[0_6px_14px_rgba(0,65,182,0.07)] dark:border-[#35558E] dark:bg-[#16305D] dark:text-white'
