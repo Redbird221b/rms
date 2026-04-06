@@ -671,9 +671,16 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
 }
 
 export async function loadErmDataset() {
-  const rawDepartments = await request('/app/api/create/department/')
-  const rawRisks = await request('/app/api/create/risk/')
-  const [rawCategories, rawMitigations, rawDecisions, rawActivities] = await Promise.all([
+  const [
+    rawDepartments,
+    rawRisks,
+    rawCategories,
+    rawMitigations,
+    rawDecisions,
+    rawActivities,
+  ] = await Promise.all([
+    request('/app/api/create/department/'),
+    request('/app/api/create/risk/'),
     request('/app/api/create/category/'),
     request('/app/api/create/mitigation/'),
     request('/app/api/create/decisition/'),

@@ -28,6 +28,7 @@ const STORAGE_KEYS = {
   globalFilters: 'erm_global_filters_v3',
   theme: 'erm_theme_v1',
   notificationReads: 'erm_notification_reads_v1',
+  datasetCache: 'erm_backend_dataset_v1',
 }
 
 const defaultGlobalFilters = {
@@ -164,6 +165,24 @@ function getGlobalFiltersStorageKey(userId) {
   return `${STORAGE_KEYS.globalFilters}:${userId ?? 'guest'}`
 }
 
+function getDatasetCacheStorageKey(userId) {
+  return `${STORAGE_KEYS.datasetCache}:${userId ?? 'guest'}`
+}
+
+function hasDatasetContent(dataset) {
+  if (!dataset || typeof dataset !== 'object') {
+    return false
+  }
+
+  return Boolean(
+    (Array.isArray(dataset.risks) && dataset.risks.length) ||
+    (Array.isArray(dataset.departmentItems) && dataset.departmentItems.length) ||
+    (Array.isArray(dataset.categoryItems) && dataset.categoryItems.length) ||
+    (Array.isArray(dataset.mitigationActions) && dataset.mitigationActions.length) ||
+    (Array.isArray(dataset.decisionLogs) && dataset.decisionLogs.length),
+  )
+}
+
 export function ErmProvider({ children }) {
   const { currentUser, directoryUsers } = useAuth()
   const [risks, setRisks] = useState([])
@@ -184,6 +203,7 @@ export function ErmProvider({ children }) {
   const syncBatchDepthRef = useRef(0)
   const pendingSyncRef = useRef(false)
   const inflightSyncRef = useRef(null)
+  const hasDatasetRef = useRef(false)
 
   const departments = useMemo(() => departmentItems.map((item) => item.name), [departmentItems])
   const categories = useMemo(() => categoryItems.map((item) => item.name), [categoryItems])
@@ -218,9 +238,14 @@ export function ErmProvider({ children }) {
     )
     setIsBackendConnected(true)
     setBackendError('')
+    hasDatasetRef.current = true
+
+    if (currentUser?.id) {
+      saveToStorage(getDatasetCacheStorageKey(currentUser.id), dataset)
+    }
   }
 
-  const syncFromBackend = async ({ force = false } = {}) => {
+  const syncFromBackend = async ({ force = false, preserveOnError = false } = {}) => {
     if (!force && inflightSyncRef.current) {
       return inflightSyncRef.current
     }
@@ -232,7 +257,9 @@ export function ErmProvider({ children }) {
         applyDataset(dataset)
         return dataset
       } catch (error) {
-        setIsBackendConnected(false)
+        if (!preserveOnError && !hasDatasetRef.current) {
+          setIsBackendConnected(false)
+        }
         setBackendError(error instanceof Error ? error.message : 'Unable to load data from backend.')
         throw error
       } finally {
@@ -288,14 +315,24 @@ export function ErmProvider({ children }) {
       setIsBackendConnected(false)
       setIsBackendLoading(false)
       setBackendError('')
+      hasDatasetRef.current = false
       return () => {
         active = false
       }
     }
 
     const loadInitialData = async () => {
+      const cachedDataset = loadFromStorage(getDatasetCacheStorageKey(currentUser.id), null)
+
+      if (active && hasDatasetContent(cachedDataset)) {
+        applyDataset(cachedDataset)
+      }
+
       try {
-        await syncFromBackend({ force: true })
+        await syncFromBackend({
+          force: true,
+          preserveOnError: hasDatasetContent(cachedDataset),
+        })
         if (!active) {
           return
         }
@@ -303,19 +340,18 @@ export function ErmProvider({ children }) {
         if (!active) {
           return
         }
-        setRisks([])
-        setMitigationActions([])
-        setDecisionLogs([])
-        setDepartmentItems([])
-        setCategoryItems([])
-        setGlobalFiltersState(defaultGlobalFilters)
-        setIsBackendConnected(false)
+
+        if (!hasDatasetContent(cachedDataset)) {
+          setRisks([])
+          setMitigationActions([])
+          setDecisionLogs([])
+          setDepartmentItems([])
+          setCategoryItems([])
+          setGlobalFiltersState(defaultGlobalFilters)
+          setIsBackendConnected(false)
+        }
+
         setBackendError(error instanceof Error ? error.message : 'Unable to load data from backend.')
-        addToast({
-          type: 'error',
-          title: 'Backend unavailable',
-          message: error instanceof Error ? error.message : 'Unable to load data from backend.',
-        })
       }
     }
 
