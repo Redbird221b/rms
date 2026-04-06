@@ -112,21 +112,23 @@ function SidebarPanel({
               onClick={onNavigate}
               title={collapsed ? t(item.labelKey) : undefined}
               className={clsx(
-                'group flex w-full items-center rounded-xl text-[15px] font-semibold transition-colors duration-150',
+                'group flex w-full items-center text-[15px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150',
                 collapsed
-                  ? 'mx-auto h-[52px] w-[52px] justify-center px-0'
-                  : 'min-h-11 gap-3 px-3 py-2.5',
+                  ? 'mx-auto h-12 w-12 justify-center rounded-2xl px-0'
+                  : 'min-h-11 gap-3 rounded-[18px] px-3.5 py-2.5',
                 isActive
-                  ? 'border border-[#D8E5FF] bg-[#EEF4FF] text-[#0041B6] shadow-[0_6px_14px_rgba(0,65,182,0.07)] dark:border-[#35558E] dark:bg-[#16305D] dark:text-white'
-                  : 'text-slate-600 hover:bg-[#F4F7FB] hover:text-slate-900 dark:text-[#C9D8F7] dark:hover:bg-white/8 dark:hover:text-white',
+                  ? 'border border-[#D7E5FF] bg-[#EEF4FF] text-[#0B4FCF] shadow-[0_4px_12px_rgba(13,62,167,0.07)] dark:border-[#35558E] dark:bg-[#18325B] dark:text-white'
+                  : 'border border-transparent text-slate-600 hover:bg-[#F4F7FB] hover:text-slate-900 dark:text-[#C9D8F7] dark:hover:!border-[#29497B] dark:hover:!bg-[#172744] dark:hover:text-white',
               )}
             >
               <span
                 className={clsx(
                   'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
                   isActive
-                    ? 'bg-white text-[#0041B6] shadow-sm dark:bg-white/12 dark:text-white'
-                    : 'text-slate-500 group-hover:text-[#0041B6] dark:text-[#9EB4E2] dark:group-hover:text-white',
+                    ? collapsed
+                      ? 'bg-transparent text-[#0B4FCF] dark:text-white'
+                      : 'bg-[#DCE9FF] text-[#0B4FCF] dark:bg-[#23457A] dark:text-white'
+                    : 'bg-transparent text-slate-500 group-hover:text-[#0B4FCF] dark:text-[#9EB4E2] dark:group-hover:text-white',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
