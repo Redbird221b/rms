@@ -91,15 +91,15 @@ export default function DataTable({
   const renderCell = (column, row) => (column.render ? column.render(row) : row[column.key])
 
   return (
-    <div className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D9D9D9] px-4 py-3 dark:border-[#2F4878]">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+    <div className="panel overflow-hidden rounded-[24px]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D9D9D9] bg-[#FBFCFE] px-4 py-3 dark:border-[#2F4878] dark:bg-[#0F1E3A]/88">
+        {title ? <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3> : <div />}
         <div className="relative flex items-center gap-2">
-          <div className="rounded-lg border border-[#D9D9D9] p-0.5 dark:border-[#2F4878]">
+          <div className="rounded-xl border border-[#D9D9D9] p-0.5 dark:border-[#2F4878]">
             <button
               type="button"
               className={clsx(
-                'rounded-md px-2 py-1 text-xs',
+                'rounded-lg px-2.5 py-1.5 text-xs',
                 density === 'comfortable'
                   ? 'bg-[#0041B6] text-white'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59]',
@@ -111,7 +111,7 @@ export default function DataTable({
             <button
               type="button"
               className={clsx(
-                'rounded-md px-2 py-1 text-xs',
+                'rounded-lg px-2.5 py-1.5 text-xs',
                 density === 'compact'
                   ? 'bg-[#0041B6] text-white'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59]',
@@ -124,17 +124,17 @@ export default function DataTable({
           <button
             type="button"
             onClick={() => setShowSettings((open) => !open)}
-            className="inline-flex items-center gap-1 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs text-slate-600 hover:bg-[#F6F8FC] dark:border-[#2F4878] dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
+            className="inline-flex items-center gap-1 rounded-xl border border-[#D9D9D9] px-3 py-2 text-xs text-slate-600 hover:bg-[#F6F8FC] dark:border-[#2F4878] dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
           >
             <Settings2 className="h-3.5 w-3.5" />
             {t('table.columns')}
           </button>
           {showSettings ? (
-            <div className="absolute right-0 top-10 z-10 w-48 rounded-lg border border-[#D9D9D9] bg-white p-2 shadow-sm dark:border-[#2F4878] dark:bg-[#13264A]">
+            <div className="absolute right-0 top-12 z-10 w-52 rounded-2xl border border-[#D9D9D9] bg-white p-2 shadow-lg dark:border-[#2F4878] dark:bg-[#13264A]">
               {columns.map((column) => (
                 <label
                   key={column.key}
-                  className="mb-1 flex cursor-pointer items-center justify-between rounded px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
+                  className="mb-1 flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-100 dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
                 >
                   <span>{column.label}</span>
                   <input
@@ -215,7 +215,7 @@ export default function DataTable({
 
           <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full">
-            <thead className="bg-[#F6F8FC] dark:bg-[#0F1E3A]">
+            <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#0F1E3A]">
               <tr>
                 {activeColumns.map((column) => (
                   <th

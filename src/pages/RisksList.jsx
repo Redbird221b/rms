@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
 import EmptyState from '../components/common/EmptyState'
-import PageHeader from '../components/common/PageHeader'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
 import DataTable from '../components/table/DataTable'
@@ -34,7 +33,17 @@ export default function RisksList() {
 
   const columns = useMemo(
     () => [
-      { key: 'id', label: t('risks.col.id'), sortable: true },
+      {
+        key: 'riskNumber',
+        label: t('risks.col.id'),
+        sortable: true,
+        sortValue: (row) => row.riskNumber || row.id,
+        render: (row) => (
+          <span className="inline-flex rounded-xl border border-[#D9E3F2] bg-[#F8FAFD] px-2.5 py-1 text-xs font-semibold tracking-wide text-[#35588F] dark:border-[#2F4878] dark:bg-[#10203D] dark:text-[#D6E4FF]">
+            {row.riskNumber || row.id}
+          </span>
+        ),
+      },
       {
         key: 'title',
         label: t('risks.col.risk'),
@@ -42,7 +51,11 @@ export default function RisksList() {
         render: (row) => (
           <div>
             <p className="font-medium text-slate-900 dark:text-slate-100">{row.title}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{tr('category', row.category)}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-slate-500 dark:text-slate-400">{tr('category', row.category)}</span>
+              <span className="text-[10px] text-slate-300 dark:text-slate-600">•</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{tr('department', row.department)}</span>
+            </div>
           </div>
         ),
       },
@@ -95,18 +108,28 @@ export default function RisksList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={t('risks.title')}
-        subtitle={t('risks.subtitle')}
-        actions={
-          <Link to="/create" className="btn-primary">
-            <Plus className="mr-1 h-4 w-4" />
-            {t('risks.create')}
-          </Link>
-        }
-      />
+      <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-[2rem] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+            {t('risks.title')}
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{t('risks.subtitle')}</p>
+        </div>
+        <Link to="/create" className="btn-primary">
+          <Plus className="mr-1 h-4 w-4" />
+          {t('risks.create')}
+        </Link>
+      </section>
 
-      <section className="panel p-3">
+      <section className="panel rounded-[22px] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Локальные фильтры</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Показано {visibleRisks.length} из {filteredRisks.length}
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="space-y-1">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('risks.category')}</span>
@@ -152,7 +175,7 @@ export default function RisksList() {
       </section>
 
       <DataTable
-        title={t('risks.title')}
+        title=""
         columns={columns}
         data={visibleRisks}
         initialSort={{ key: 'expectedLoss', direction: 'desc' }}
