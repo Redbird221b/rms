@@ -57,8 +57,17 @@ export default function DataTable({
   }, [density, storageKey, visibleColumns])
 
   const activeColumns = useMemo(
-    () => columns.filter((column) => visibleColumns[column.key] !== false),
-    [columns, visibleColumns],
+    () =>
+      columns.filter((column) => {
+        if (visibleColumns[column.key] === false) {
+          return false
+        }
+        if (density === 'compact' && column.compactHidden) {
+          return false
+        }
+        return true
+      }),
+    [columns, density, visibleColumns],
   )
 
   const sortedData = useMemo(() => {
@@ -87,13 +96,24 @@ export default function DataTable({
     return copy
   }, [columns, data, sort])
 
-  const rowPadding = density === 'compact' ? 'py-2' : 'py-3.5'
-  const renderCell = (column, row) => (column.render ? column.render(row) : row[column.key])
+  const rowPadding = density === 'compact' ? 'py-1.5' : 'py-3.5'
+  const headerPadding = density === 'compact' ? 'py-1.5' : 'py-2'
+  const bodyTextClass = density === 'compact' ? 'text-[13px]' : 'text-sm'
+  const renderCell = (column, row) => (column.render ? column.render(row, { density }) : row[column.key])
+
+  const hasHeaderTitle = Boolean(title)
 
   return (
-    <div className="panel overflow-hidden rounded-[24px]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D9D9D9] bg-[#FBFCFE] px-4 py-3 dark:border-[#2F4878] dark:bg-[#0F1E3A]/88">
-        {title ? <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3> : <div />}
+    <div className="panel overflow-hidden rounded-[24px] dark:border-[#314E82] dark:bg-[#132445]">
+      <div
+        className={clsx(
+          'flex flex-wrap items-center gap-2 px-4 py-3',
+          hasHeaderTitle
+            ? 'justify-between border-b border-[#D9D9D9] bg-[#FBFCFE] dark:border-[#2F4878] dark:bg-[#10203D]'
+            : 'justify-end bg-transparent pb-2',
+        )}
+      >
+        {hasHeaderTitle ? <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3> : null}
         <div className="relative flex items-center gap-2">
           <div className="rounded-xl border border-[#D9D9D9] p-0.5 dark:border-[#2F4878]">
             <button
@@ -215,14 +235,14 @@ export default function DataTable({
 
           <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full">
-            <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#0F1E3A]">
+            <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#10203D]">
               <tr>
                 {activeColumns.map((column) => (
                   <th
                     key={column.key}
                     scope="col"
                     className={clsx(
-                      'whitespace-nowrap px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
+                      `whitespace-nowrap px-4 ${headerPadding} text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400`,
                       column.align === 'right' ? 'text-right' : 'text-left',
                     )}
                   >
@@ -248,7 +268,7 @@ export default function DataTable({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#D9D9D9] bg-white dark:divide-[#2F4878] dark:bg-[#13264A]/70">
+            <tbody className="divide-y divide-[#D9D9D9] bg-white dark:divide-[#2F4878] dark:bg-[#132445]">
               {sortedData.map((row) => (
                 <tr
                   key={row[rowKey]}
@@ -263,7 +283,7 @@ export default function DataTable({
                     <td
                       key={`${row[rowKey]}-${column.key}`}
                       className={clsx(
-                        `px-4 text-sm text-slate-700 dark:text-slate-200 ${rowPadding}`,
+                        `px-4 ${bodyTextClass} text-slate-700 dark:text-slate-200 ${rowPadding}`,
                         column.align === 'right' ? 'text-right' : 'text-left',
                       )}
                     >

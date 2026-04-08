@@ -120,7 +120,7 @@ export default function RiskForm({
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_340px]">
         <div className="panel p-4">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('form.riskInformation')}
@@ -241,38 +241,58 @@ export default function RiskForm({
           </div>
         </div>
 
-        <div className="panel p-4">
+        <aside className="panel p-4 xl:sticky xl:top-6 xl:self-start">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {t('form.workflowTitle')}
           </h2>
-          <div className="mt-3 space-y-3">
-            <div className="rounded-2xl border border-[#D9D9D9] bg-[#F7F8FB] p-4 dark:border-[#2F4878] dark:bg-[#10203D]/80">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#0041B6] dark:text-[#BFD2FF]">
-                {t('form.workflowStep1')}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t('form.workflowStep1Desc')}
-              </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {t('create.subtitle')}
+          </p>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-2xl border border-[#D9D9D9] bg-[#F7F8FB] p-3 dark:border-[#2F4878] dark:bg-[#10203D]/80">
+              <div className="flex gap-3">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E8EFFF] text-xs font-semibold text-[#0041B6] dark:bg-[#17305B] dark:text-[#C7D8FF]">
+                  1
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#0041B6] dark:text-[#BFD2FF]">
+                    {t('form.workflowStep1')}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {t('form.workflowStep1Desc')}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="rounded-2xl border border-dashed border-[#C9D4E7] bg-white p-4 dark:border-[#34507F] dark:bg-[#13264A]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#DB4300] dark:text-[#FFBE9F]">
-                {t('form.workflowStep2')}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t('form.workflowStep2Desc')}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4 dark:border-[#2F4878] dark:bg-[#13264A]">
-              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                {t('form.workflowResultTitle')}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t('form.workflowResultDesc')}
-              </p>
+
+            <div className="rounded-2xl border border-dashed border-[#C9D4E7] bg-white p-3 dark:border-[#34507F] dark:bg-[#13264A]">
+              <div className="flex gap-3">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EA] text-xs font-semibold text-[#DB4300] dark:bg-[#5A2D1F] dark:text-[#FFBE9F]">
+                  2
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#DB4300] dark:text-[#FFBE9F]">
+                    {t('form.workflowStep2')}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {t('form.workflowStep2Desc')}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-[#2F4878] dark:bg-[#10203D]/70">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              {t('form.workflowResultTitle')}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {t('form.workflowResultDesc')}
+            </p>
+          </div>
+
+          <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4 dark:border-[#243D69]">
             <button
               type="button"
               className="btn-secondary"
@@ -287,7 +307,7 @@ export default function RiskForm({
               {submitting ? submittingLabel || t('form.creating') : submitLabel || t('form.create')}
             </button>
           </div>
-        </div>
+        </aside>
       </div>
     </form>
   )

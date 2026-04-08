@@ -989,7 +989,7 @@ export default function RiskDetails() {
     {
       key: 'responsible',
       label: t('details.responsible'),
-      value: risk.responsible || '—',
+      value: risk.responsible || '-',
       icon: UserRound,
       accent: 'bg-[#FBFCFF] border-[#E7EDF8] dark:bg-[#10203D] dark:border-[#304B78]',
     },
@@ -999,6 +999,29 @@ export default function RiskDetails() {
       value: actions.length ? `${mitigationCounts.approved}/${actions.length}` : formatDate(risk.lastReviewedAt),
       icon: actions.length ? Target : CalendarDays,
       accent: 'bg-[#FBFCFF] border-[#E7EDF8] dark:bg-[#10203D] dark:border-[#304B78]',
+    },
+  ]
+
+  const heroMetaItems = [
+    {
+      key: 'created-by',
+      label: t('details.createdBy'),
+      value: createdByName,
+    },
+    {
+      key: 'owner',
+      label: t('details.owner'),
+      value: risk.owner || '-',
+    },
+    {
+      key: 'responsible',
+      label: t('details.responsible'),
+      value: risk.responsible || '-',
+    },
+    {
+      key: 'mitigation-department',
+      label: t('details.mitigationDepartment'),
+      value: risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '-',
     },
   ]
 
@@ -1089,9 +1112,15 @@ export default function RiskDetails() {
     })
   }
 
+  const actionCenterMessage = isActionLocked
+    ? t('workflow.awaitingResponseShort')
+    : primaryActions.length || secondaryActions.length
+      ? t('committee.cardReady')
+      : t('details.noActionsAvailable')
+
   return (
     <div className="space-y-5">
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr,0.95fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_360px]">
         <article className="panel p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-[#D6E2FF] bg-[#F5F8FF] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#003EAB] dark:border-[#45629A] dark:bg-[#10203D]/80 dark:text-[#BFD3FF]">
@@ -1111,31 +1140,63 @@ export default function RiskDetails() {
             {risk.description}
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
-              {t('details.createdBy')}: {createdByName}
-            </span>
-            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
-              {t('details.owner')}: {risk.owner}
-            </span>
-            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
-              {t('details.responsible')}: {risk.responsible || '—'}
-            </span>
-            <span className="rounded-full bg-[#F7F9FD] px-3 py-1.5 text-xs text-slate-600 dark:bg-[#10203D] dark:text-slate-200">
-              {t('details.mitigationDepartment')}: {risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '—'}
-            </span>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {overviewHighlights.map((item) => {
+              const Icon = item.icon
+
+              return (
+                <article
+                  key={item.key}
+                  className={`rounded-[22px] border px-4 py-4 ${item.accent}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {item.label}
+                    </p>
+                  </div>
+                  <p className="mt-3 break-words text-base font-semibold text-slate-950 dark:text-white">
+                    {item.value}
+                  </p>
+                </article>
+              )
+            })}
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {heroMetaItems.map((item) => (
+              <article
+                key={item.key}
+                className="rounded-[18px] border border-[#E7EDF8] bg-[#FBFCFF] px-4 py-3 dark:border-[#304B78] dark:bg-[#10203D]"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  {item.label}
+                </p>
+                <p className="mt-2 break-words text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {item.value}
+                </p>
+              </article>
+            ))}
           </div>
         </article>
 
-        <aside className="panel p-5">
+        <aside className="panel bg-[linear-gradient(180deg,#FBFCFF_0%,#F5F8FF_100%)] p-5 dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
           <div className="flex items-center gap-2">
             <MessageSquareText className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              Available actions
+              {t('details.actionCenter')}
             </p>
           </div>
+          <div className="mt-4 rounded-[20px] border border-[#DCE6F8] bg-white/85 p-4 dark:border-[#355281] dark:bg-[#10203D]/90">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {t('details.currentStage')}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <StatusChip status={risk.status} />
+            </div>
+          </div>
           <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {isActionLocked ? t('workflow.awaitingResponse') : t('committee.cardReady')}
+            {actionCenterMessage}
           </p>
 
           <div className="mt-4 grid gap-2">
@@ -1166,7 +1227,7 @@ export default function RiskDetails() {
             ))}
             {!primaryActions.length && !secondaryActions.length ? (
               <div className="rounded-[22px] border border-dashed border-[#D7E2F6] bg-[#F8FAFE] p-4 text-sm leading-6 text-slate-500 dark:border-[#355281] dark:bg-[#10203D] dark:text-slate-300">
-                No actions are available for your current role at this stage.
+                {t('details.noActionsAvailable')}
               </div>
             ) : null}
           </div>
@@ -1178,11 +1239,11 @@ export default function RiskDetails() {
           <div className="flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              Workflow
+              {t('details.workflow')}
             </p>
           </div>
 
-          <div className="grid gap-3 xl:grid-cols-6">
+          <div className="grid gap-2 lg:grid-cols-6">
             {workflowSteps.map((step, index) => {
               const isComplete = step.state === 'complete'
               const isActive = step.state === 'active'
@@ -1190,7 +1251,7 @@ export default function RiskDetails() {
               return (
                 <div
                   key={step.value}
-                  className={`rounded-[22px] border px-4 py-4 transition-colors ${
+                  className={`rounded-[20px] border px-4 py-3 transition-colors ${
                     isActive
                       ? 'border-[#C9D7FF] bg-[#EEF3FF] dark:border-[#4569A8] dark:bg-[#17315E]'
                       : isComplete
@@ -1211,8 +1272,8 @@ export default function RiskDetails() {
                       {isComplete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                        Step {index + 1}
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {t('details.stage')} {index + 1}
                       </p>
                       <p className="mt-1 text-sm font-medium leading-5 text-slate-900 dark:text-slate-100">
                         {tr('status', step.value)}
@@ -1224,36 +1285,8 @@ export default function RiskDetails() {
             })}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {overviewHighlights.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <article
-                  key={item.key}
-                  className="rounded-[22px] border border-[#E7EDF8] bg-[#FBFCFF] px-4 py-4 dark:border-[#304B78] dark:bg-[#10203D]"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {item.label}
-                    </p>
-                  </div>
-                  <p className="mt-3 break-words text-base font-semibold text-slate-950 dark:text-white">
-                    {item.value}
-                  </p>
-                </article>
-              )
-            })}
-          </div>
         </div>
       </section>
-
-      {isActionLocked ? (
-        <section className="panel border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
-          {t('workflow.awaitingResponse')}
-        </section>
-      ) : null}
 
       <section className="panel p-2 sm:p-3">
         <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -1265,18 +1298,13 @@ export default function RiskDetails() {
             <div className="border-b border-[#E6ECF5] bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FAFE_100%)] px-5 py-4 dark:border-[#304B78] dark:bg-[linear-gradient(180deg,#15294E_0%,#112241_100%)]">
               <div className="flex items-center gap-2">
                 <ClipboardCheck className="h-4 w-4 text-[#0041B6] dark:text-[#9FBCFF]" />
-                <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.description')}</h2>
+                <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.controls')}</h2>
               </div>
             </div>
 
             <div className="space-y-6 p-5">
-              <p className="max-w-4xl break-words text-sm leading-7 text-slate-600 dark:text-slate-300">
-                {risk.description}
-              </p>
-
               <div>
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{t('details.controls')}</h3>
-                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <section className="rounded-[24px] border border-[#E6ECF5] bg-[#FBFCFF] p-4 dark:border-[#304B78] dark:bg-[#10203D]">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       {t('details.existingControls')}

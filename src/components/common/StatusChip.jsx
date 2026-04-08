@@ -21,13 +21,15 @@ const styleByStatus = {
   Rejected: 'bg-[#FFDDD0] text-[#9B3000] dark:bg-[#A33300] dark:text-white',
 }
 
-export default function StatusChip({ status }) {
+export default function StatusChip({ status, compact = false }) {
   const { tr } = useI18n()
 
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
+        compact
+          ? 'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium'
+          : 'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
         styleByStatus[status] ?? styleByStatus.Draft,
       )}
     >

@@ -10,7 +10,7 @@ const severityStyles = {
   Critical: 'bg-[#DB4300] text-white dark:bg-[#DB4300] dark:text-white',
 }
 
-export default function SeverityBadge({ severity }) {
+export default function SeverityBadge({ severity, compact = false }) {
   const { tr } = useI18n()
 
   if (!severity) {
@@ -20,7 +20,9 @@ export default function SeverityBadge({ severity }) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold',
+        compact
+          ? 'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold'
+          : 'inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold',
         severityStyles[severity] ?? severityStyles.Low,
       )}
     >
