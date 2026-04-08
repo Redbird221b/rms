@@ -1,5 +1,5 @@
 import { ArrowUpDown, Settings2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
 import { useI18n } from '../../app/context/I18nContext'
@@ -27,6 +27,7 @@ export default function DataTable({
   storageKey,
   onRowClick,
   emptyState,
+  compactRowRenderer,
 }) {
   const { t } = useI18n()
 
@@ -48,6 +49,7 @@ export default function DataTable({
   const [showSettings, setShowSettings] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState(initialPreferences.visibleColumns)
   const [density, setDensity] = useState(initialPreferences.density)
+  const settingsRef = useRef(null)
 
   useEffect(() => {
     if (!storageKey) {
@@ -55,6 +57,32 @@ export default function DataTable({
     }
     saveToStorage(storageKey, { visibleColumns, density })
   }, [density, storageKey, visibleColumns])
+
+  useEffect(() => {
+    if (!showSettings) {
+      return undefined
+    }
+
+    const handlePointerDown = (event) => {
+      if (!settingsRef.current?.contains(event.target)) {
+        setShowSettings(false)
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowSettings(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showSettings])
 
   const activeColumns = useMemo(
     () =>
@@ -104,7 +132,7 @@ export default function DataTable({
   const hasHeaderTitle = Boolean(title)
 
   return (
-    <div className="panel overflow-hidden rounded-[24px] dark:border-[#314E82] dark:bg-[#132445]">
+    <div className="panel overflow-visible rounded-[24px] dark:border-[#314E82] dark:bg-[#132445]">
       <div
         className={clsx(
           'flex flex-wrap items-center gap-2 px-4 py-3',
@@ -114,7 +142,7 @@ export default function DataTable({
         )}
       >
         {hasHeaderTitle ? <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3> : null}
-        <div className="relative flex items-center gap-2">
+        <div ref={settingsRef} className="relative flex items-center gap-2">
           <div className="rounded-xl border border-[#D9D9D9] p-0.5 dark:border-[#2F4878]">
             <button
               type="button"
@@ -145,31 +173,40 @@ export default function DataTable({
             type="button"
             onClick={() => setShowSettings((open) => !open)}
             className="inline-flex items-center gap-1 rounded-xl border border-[#D9D9D9] px-3 py-2 text-xs text-slate-600 hover:bg-[#F6F8FC] dark:border-[#2F4878] dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
+            aria-expanded={showSettings}
+            aria-haspopup="dialog"
           >
             <Settings2 className="h-3.5 w-3.5" />
             {t('table.columns')}
           </button>
           {showSettings ? (
-            <div className="absolute right-0 top-12 z-10 w-52 rounded-2xl border border-[#D9D9D9] bg-white p-2 shadow-lg dark:border-[#2F4878] dark:bg-[#13264A]">
-              {columns.map((column) => (
-                <label
-                  key={column.key}
-                  className="mb-1 flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-100 dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
-                >
-                  <span>{column.label}</span>
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns[column.key] !== false}
-                    onChange={(event) =>
-                      setVisibleColumns((current) => ({
-                        ...current,
-                        [column.key]: event.target.checked,
-                      }))
-                    }
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-[#0041B6] focus:ring-[#0041B6]"
-                  />
-                </label>
-              ))}
+            <div className="absolute right-0 top-full z-20 mt-2 w-60 overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] dark:border-[#2F4878] dark:bg-[#13264A]">
+              <div className="border-b border-[#E7EDF6] px-3 py-2 dark:border-[#274370]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-[#8FA6D5]">
+                  {t('table.columns')}
+                </p>
+              </div>
+              <div className="max-h-[320px] overflow-y-auto p-2">
+                {columns.map((column) => (
+                  <label
+                    key={column.key}
+                    className="mb-1 flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2.5 py-2 text-xs text-slate-600 hover:bg-slate-100 dark:text-[#D8E5FF] dark:hover:bg-[#1A2F59]"
+                  >
+                    <span className="min-w-0 truncate">{column.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[column.key] !== false}
+                      onChange={(event) =>
+                        setVisibleColumns((current) => ({
+                          ...current,
+                          [column.key]: event.target.checked,
+                        }))
+                      }
+                      className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-[#0041B6] focus:ring-[#0041B6]"
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
@@ -234,6 +271,22 @@ export default function DataTable({
           </div>
 
           <div className="hidden overflow-x-auto md:block">
+          {density === 'compact' && compactRowRenderer ? (
+            <div className="grid gap-3 bg-white p-3 md:grid-cols-2 2xl:grid-cols-3 dark:bg-[#132445]">
+              {sortedData.map((row) => (
+                <div
+                  key={row[rowKey]}
+                  className={clsx(
+                    'h-full rounded-2xl border border-[#D9D9D9] bg-[#FBFCFE] p-4 dark:border-[#2F4878] dark:bg-[#10203D]',
+                    onRowClick ? 'cursor-pointer transition-colors hover:bg-white dark:hover:bg-[#17305A]' : '',
+                  )}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
+                  {compactRowRenderer(row)}
+                </div>
+              ))}
+            </div>
+          ) : (
           <table className="min-w-full">
             <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#10203D]">
               <tr>
@@ -294,6 +347,7 @@ export default function DataTable({
               ))}
             </tbody>
           </table>
+          )}
           </div>
         </>
       ) : (

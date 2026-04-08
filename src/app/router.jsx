@@ -15,18 +15,12 @@ import ReviewQueue from '../pages/ReviewQueue'
 import { PERMISSIONS } from '../lib/access'
 
 function AuthGateFallback() {
-  const { language } = useI18n()
-  const title =
-    language === 'uz'
-      ? 'Sessiya tekshirilmoqda...'
-      : language === 'en'
-        ? 'Checking your session...'
-        : 'Проверяем сессию...'
+  const { t } = useI18n()
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <section className="panel w-full max-w-md p-6 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('auth.checkingSession')}</p>
       </section>
     </main>
   )

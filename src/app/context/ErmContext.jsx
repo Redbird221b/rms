@@ -169,6 +169,29 @@ function getDatasetCacheStorageKey(userId) {
   return `${STORAGE_KEYS.datasetCache}:${userId ?? 'guest'}`
 }
 
+function getNotificationReadUserKeys(user) {
+  if (!user) {
+    return []
+  }
+
+  return [...new Set([
+    user.keycloakSubject,
+    user.backendUserId,
+    user.id,
+  ].filter(Boolean).map(String))]
+}
+
+function getPrimaryNotificationReadUserKey(user) {
+  return getNotificationReadUserKeys(user)[0] ?? null
+}
+
+function getNotificationReadMap(notificationReads, user) {
+  return getNotificationReadUserKeys(user).reduce((accumulator, key) => ({
+    ...accumulator,
+    ...(notificationReads?.[key] ?? {}),
+  }), {})
+}
+
 function hasDatasetContent(dataset) {
   if (!dataset || typeof dataset !== 'object') {
     return false
@@ -442,8 +465,20 @@ export function ErmProvider({ children }) {
 
   const addRisk = async (newRisk) => {
     const createdAt = new Date().toISOString()
-    const owner = newRisk.owner?.trim() || currentUser?.role || currentUser?.name || 'Risk Owner'
-    const responsible = newRisk.responsible?.trim() || currentUser?.name || currentUser?.role || 'Unassigned'
+    const owner =
+      newRisk.owner?.trim() ||
+      currentUser?.name ||
+      currentUser?.username ||
+      currentUser?.email ||
+      currentUser?.role ||
+      'Risk Owner'
+    const responsible =
+      newRisk.responsible?.trim() ||
+      currentUser?.name ||
+      currentUser?.username ||
+      currentUser?.email ||
+      currentUser?.role ||
+      'Unassigned'
     const payload = {
       ...newRisk,
       owner,
@@ -720,7 +755,7 @@ export function ErmProvider({ children }) {
       return []
     }
 
-    const readMap = notificationReads?.[currentUser.id] ?? {}
+    const readMap = getNotificationReadMap(notificationReads, currentUser)
     const explicitNotifications = risks
       .flatMap((risk) =>
         (Array.isArray(risk.audit) ? risk.audit : [])
@@ -829,21 +864,23 @@ export function ErmProvider({ children }) {
   )
 
   const markNotificationRead = (notificationId) => {
-    if (!currentUser?.id || !notificationId) {
+    const readKey = getPrimaryNotificationReadUserKey(currentUser)
+    if (!readKey || !notificationId) {
       return
     }
 
     setNotificationReads((current) => ({
       ...current,
-      [currentUser.id]: {
-        ...(current?.[currentUser.id] ?? {}),
+      [readKey]: {
+        ...getNotificationReadMap(current, currentUser),
         [notificationId]: true,
       },
     }))
   }
 
   const markAllNotificationsRead = () => {
-    if (!currentUser?.id || !notifications.length) {
+    const readKey = getPrimaryNotificationReadUserKey(currentUser)
+    if (!readKey || !notifications.length) {
       return
     }
 
@@ -857,8 +894,8 @@ export function ErmProvider({ children }) {
 
     setNotificationReads((current) => ({
       ...current,
-      [currentUser.id]: {
-        ...(current?.[currentUser.id] ?? {}),
+      [readKey]: {
+        ...getNotificationReadMap(current, currentUser),
         ...nextReads,
       },
     }))

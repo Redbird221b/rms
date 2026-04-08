@@ -1650,6 +1650,74 @@ Object.assign(messages.en, profileMessages.en)
 Object.assign(messages.ru, profileMessages.ru)
 Object.assign(messages.uz, profileMessages.uz)
 
+const commonUiMessages = {
+  en: {
+    'common.loadingBackendData': 'Loading backend data...',
+    'common.backendUnavailable': 'Backend unavailable',
+    'common.backendUnavailableDesc': 'Unable to load data from backend.',
+    'auth.checkingSession': 'Checking your session...',
+  },
+  ru: {
+    'common.loadingBackendData': 'Загрузка данных backend...',
+    'common.backendUnavailable': 'Backend недоступен',
+    'common.backendUnavailableDesc': 'Не удалось загрузить данные с backend.',
+    'auth.checkingSession': 'Проверяем сессию...',
+  },
+  uz: {
+    'common.loadingBackendData': 'Backend ma’lumotlari yuklanmoqda...',
+    'common.backendUnavailable': 'Backend mavjud emas',
+    'common.backendUnavailableDesc': 'Backend dan ma’lumotlarni yuklab bo‘lmadi.',
+    'auth.checkingSession': 'Sessiya tekshirilmoqda...',
+  },
+}
+
+Object.assign(messages.en, commonUiMessages.en)
+Object.assign(messages.ru, commonUiMessages.ru)
+Object.assign(messages.uz, commonUiMessages.uz)
+
+const searchMessages = {
+  en: {
+    'search.title': 'Search suggestions',
+    'search.typingHint': 'Pages, settings, and matching risks',
+    'search.quickAccessHint': 'Quick access to key sections and recent risks',
+    'search.pagesSection': 'Pages',
+    'search.settingsSection': 'Settings',
+    'search.risksSection': 'Matching risks',
+    'search.recentRisksSection': 'Recent risks',
+    'search.settingsHint': 'Direct shortcut to administration section',
+    'search.emptyTitle': 'Nothing found',
+    'search.emptyDesc': 'Try a different query or open one of the main sections.',
+  },
+  ru: {
+    'search.title': 'Рекомендации поиска',
+    'search.typingHint': 'Страницы, настройки и найденные риски',
+    'search.quickAccessHint': 'Быстрые переходы по разделам и последним рискам',
+    'search.pagesSection': 'Страницы',
+    'search.settingsSection': 'Настройки',
+    'search.risksSection': 'Найденные риски',
+    'search.recentRisksSection': 'Последние риски',
+    'search.settingsHint': 'Быстрый переход в нужный раздел админки',
+    'search.emptyTitle': 'Ничего не найдено',
+    'search.emptyDesc': 'Попробуйте другой запрос или откройте один из основных разделов.',
+  },
+  uz: {
+    'search.title': 'Qidiruv tavsiyalari',
+    'search.typingHint': 'Sahifalar, sozlamalar va topilgan risklar',
+    'search.quickAccessHint': 'Asosiy bo‘limlar va so‘nggi risklarga tezkor kirish',
+    'search.pagesSection': 'Sahifalar',
+    'search.settingsSection': 'Sozlamalar',
+    'search.risksSection': 'Topilgan risklar',
+    'search.recentRisksSection': 'So‘nggi risklar',
+    'search.settingsHint': 'Kerakli admin bo‘limiga to‘g‘ridan-to‘g‘ri o‘tish',
+    'search.emptyTitle': 'Hech narsa topilmadi',
+    'search.emptyDesc': 'Boshqa so‘rov kiriting yoki asosiy bo‘limlardan birini oching.',
+  },
+}
+
+Object.assign(messages.en, searchMessages.en)
+Object.assign(messages.ru, searchMessages.ru)
+Object.assign(messages.uz, searchMessages.uz)
+
 Object.assign(enumDictionary.severity, {
   Small: { en: 'Small', ru: 'Малое', uz: 'Kichik' },
   Strong: { en: 'Strong', ru: 'Сильное', uz: 'Kuchli' },

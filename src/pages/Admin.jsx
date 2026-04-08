@@ -1,11 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Building2, FolderKanban, Search, ShieldCheck, TriangleAlert, Users2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
 import EmptyState from '../components/common/EmptyState'
 import Tabs from '../components/common/Tabs'
 import { severityThresholds } from '../lib/compute'
 import { formatCurrency } from '../lib/format'
+
+const ADMIN_TABS = ['departments', 'categories', 'statuses', 'thresholds', 'users']
+
+function resolveAdminTab(value) {
+  return ADMIN_TABS.includes(value) ? value : 'departments'
+}
 
 function hasPersistentId(item) {
   return item?.id !== null && item?.id !== undefined && item?.id !== ''
@@ -339,8 +346,14 @@ export default function Admin() {
     backendError,
   } = useErm()
   const { t, tr } = useI18n()
-  const [activeTab, setActiveTab] = useState('departments')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(() => resolveAdminTab(searchParams.get('tab')))
   const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    const nextTab = resolveAdminTab(searchParams.get('tab'))
+    setActiveTab((current) => (current === nextTab ? current : nextTab))
+  }, [searchParams])
 
   if (!isBackendConnected && !backendError) {
     return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
@@ -412,8 +425,14 @@ export default function Admin() {
         tabs={tabs}
         activeTab={activeTab}
         onChange={(value) => {
-          setActiveTab(value)
+          const nextTab = resolveAdminTab(value)
+          setActiveTab(nextTab)
           setSearchQuery('')
+          setSearchParams((current) => {
+            const nextParams = new URLSearchParams(current)
+            nextParams.set('tab', nextTab)
+            return nextParams
+          })
         }}
       />
 
