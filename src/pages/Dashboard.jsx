@@ -8,7 +8,6 @@ import DepartmentRiskBarChart from '../components/charts/DepartmentRiskBarChart'
 import ExpectedLossTrendChart from '../components/charts/ExpectedLossTrendChart'
 import RiskHeatmap from '../components/charts/RiskHeatmap'
 import EmptyState from '../components/common/EmptyState'
-import PageHeader from '../components/common/PageHeader'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
 import { SkeletonCard } from '../components/common/Skeletons'
@@ -95,17 +94,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-3.5">
-      <PageHeader
-        title={t('dashboard.title')}
-        subtitle={t('dashboard.subtitle')}
-        actions={
-          <Link to="/queue" className="btn-secondary">
-            {t('dashboard.openQueue')}
-          </Link>
-        }
-      />
-
+    <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {loading ? (
           <>
@@ -199,7 +188,12 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="panel rounded-[22px] p-4">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.topRisks')}</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.topRisks')}</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Приоритетные записи по ожидаемому убытку и текущему статусу.
+            </p>
+          </div>
           <div className="mt-3 space-y-2">
             {topRisks.map((risk) => (
               <Link

@@ -2,7 +2,7 @@ import { getImpactLevel, recalculateRisk } from './compute'
 import { normalizeDepartmentName } from './departments'
 import { refreshKeycloakToken } from './keycloak'
 
-const DEFAULT_API_BASE_URL = 'http://172.16.55.9:8000'
+const DEFAULT_API_BASE_URL = ''
 
 const LEGACY_CATEGORY_TO_API = {
   Strategic: 'STRATEGIC',
