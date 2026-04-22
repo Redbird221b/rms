@@ -37,3 +37,55 @@ npm run build
   - Route transitions
   - Modal/drawer open/close
   - KPI card hover lift
+
+## Deployment (Docker, no CI)
+
+Проект деплоится вручную через Docker на сервере.
+
+### 1) Подготовка
+
+1. Установите Docker + Docker Compose plugin.
+2. Скопируйте код в директорию сервера и перейдите в `frontend`.
+3. Создайте `.env.production` на основе `.env.example`:
+
+```bash
+cp .env.example .env.production
+```
+
+4. Заполните `.env.production`:
+
+- `VITE_API_BASE_URL` (например `http://<host>:8000`)
+- `VITE_KEYCLOAK_URL`
+- `VITE_KEYCLOAK_REALM`
+- `VITE_KEYCLOAK_CLIENT_ID`
+- `VITE_KEYCLOAK_FLOW`
+
+5. Создайте/проверьте общий docker network с backend:
+
+```bash
+docker network create riskapp-network || true
+```
+
+### 2) Деплой
+
+```bash
+./deploy.sh
+```
+
+Скрипт выполняет:
+
+- `docker compose -f docker-compose.prod.yml down --remove-orphans`
+- `docker compose -f docker-compose.prod.yml up -d --build`
+
+### 3) Проверка
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f frontend
+```
+
+Для остановки:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
