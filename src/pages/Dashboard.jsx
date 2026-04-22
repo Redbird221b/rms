@@ -1,12 +1,9 @@
 ﻿import { AlertTriangle, BadgeDollarSign, Clock3, ClipboardCheck } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
 import KpiCard from '../components/cards/KpiCard'
-import DepartmentRiskBarChart from '../components/charts/DepartmentRiskBarChart'
-import ExpectedLossTrendChart from '../components/charts/ExpectedLossTrendChart'
-import RiskHeatmap from '../components/charts/RiskHeatmap'
 import EmptyState from '../components/common/EmptyState'
 import SeverityBadge from '../components/common/SeverityBadge'
 import StatusChip from '../components/common/StatusChip'
@@ -14,6 +11,19 @@ import { SkeletonCard } from '../components/common/Skeletons'
 import { buildExpectedLossTrend, sortRisksByExpectedLoss } from '../lib/compute'
 import { formatCompactCurrency, formatCurrency } from '../lib/format'
 import { getRiskReference } from '../lib/risks'
+
+const DepartmentRiskBarChart = lazy(() => import('../components/charts/DepartmentRiskBarChart'))
+const ExpectedLossTrendChart = lazy(() => import('../components/charts/ExpectedLossTrendChart'))
+const RiskHeatmap = lazy(() => import('../components/charts/RiskHeatmap'))
+
+function ChartPanelFallback({ title }) {
+  return (
+    <div className="panel rounded-[22px] p-4">
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+      <div className="mt-3 h-64 animate-pulse rounded-[18px] bg-slate-100 dark:bg-[#17305B]" />
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { filteredRisks, mitigationActions, queueStatuses, decisionLogs, isBackendConnected, backendError } = useErm()
@@ -57,6 +67,10 @@ export default function Dashboard() {
       ).slice(0, 6),
     [filteredRisks, queueStatuses],
   )
+  const risksById = useMemo(
+    () => new Map(filteredRisks.map((risk) => [String(risk.id), risk])),
+    [filteredRisks],
+  )
   const overdueActionItems = useMemo(() => {
     return mitigationActions
       .filter((action) => {
@@ -70,9 +84,9 @@ export default function Dashboard() {
       .slice(0, 6)
       .map((action) => ({
         ...action,
-        risk: filteredRisks.find((risk) => risk.id === action.riskId),
+        risk: risksById.get(String(action.riskId)),
       }))
-  }, [filteredRisks, mitigationActions])
+  }, [mitigationActions, risksById])
   const recentDecisions = useMemo(
     () =>
       [...decisionLogs]
@@ -80,17 +94,17 @@ export default function Dashboard() {
         .slice(0, 6)
         .map((entry) => ({
           ...entry,
-          risk: filteredRisks.find((risk) => risk.id === entry.riskId),
+          risk: risksById.get(String(entry.riskId)),
         })),
-    [decisionLogs, filteredRisks],
+    [decisionLogs, risksById],
   )
 
   if (!isBackendConnected && !backendError) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
   }
 
   if (!isBackendConnected && backendError) {
-    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+    return <EmptyState title={t('common.backendUnavailable')} description={backendError || t('common.backendUnavailableDesc')} />
   }
 
   return (
@@ -134,13 +148,19 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <RiskHeatmap risks={exposureRisks} />
-        <ExpectedLossTrendChart data={trendData} />
+        <Suspense fallback={<ChartPanelFallback title={t('dashboard.chartHeatmap')} />}>
+          <RiskHeatmap risks={exposureRisks} />
+        </Suspense>
+        <Suspense fallback={<ChartPanelFallback title={t('dashboard.chartTrend')} />}>
+          <ExpectedLossTrendChart data={trendData} />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         <div className="space-y-3 xl:col-span-2">
-          <DepartmentRiskBarChart data={departmentData} />
+          <Suspense fallback={<ChartPanelFallback title={t('dashboard.chartDept')} />}>
+            <DepartmentRiskBarChart data={departmentData} />
+          </Suspense>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="panel rounded-[22px] p-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.overdueMitigationActions')}</h3>
@@ -191,33 +211,39 @@ export default function Dashboard() {
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.topRisks')}</h3>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Приоритетные записи по ожидаемому убытку и текущему статусу.
+              {t('dashboard.topRisksDesc')}
             </p>
           </div>
           <div className="mt-3 space-y-2">
-            {topRisks.map((risk) => (
-              <Link
-                key={risk.id}
-                to={`/risks/${risk.id}`}
-                className="block rounded-lg border border-slate-200 px-3 py-2 transition-colors hover:bg-slate-50 dark:border-[#2F4878] dark:hover:bg-[#1A2F59]/70"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{risk.title}</p>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{tr('department', risk.department)}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {formatCompactCurrency(risk.expectedLoss)}
-                    </p>
-                    <div className="mt-1 flex items-center justify-end gap-1">
-                      <SeverityBadge severity={risk.severity} />
-                      <StatusChip status={risk.status} />
+            {topRisks.length ? (
+              topRisks.map((risk) => (
+                <Link
+                  key={risk.id}
+                  to={`/risks/${risk.id}`}
+                  className="block rounded-lg border border-slate-200 px-3 py-2 transition-colors hover:bg-slate-50 dark:border-[#2F4878] dark:hover:bg-[#1A2F59]/70"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">{risk.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{tr('department', risk.department)}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {formatCompactCurrency(risk.expectedLoss)}
+                      </p>
+                      <div className="mt-1 flex items-center justify-end gap-1">
+                        <SeverityBadge severity={risk.severity} />
+                        <StatusChip status={risk.status} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            ) : (
+              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-[#2F4878] dark:text-slate-400">
+                {t('dashboard.topRisksEmpty')}
+              </p>
+            )}
             <div className="rounded-lg border border-slate-200 px-3 py-2 dark:border-[#2F4878]">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t('dashboard.queueSnapshot')}
@@ -241,4 +267,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

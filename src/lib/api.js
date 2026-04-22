@@ -135,6 +135,17 @@ const ACTIVITY_TO_API = {
 
 export const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
 
+const GET_REQUEST_CACHE_TTL_MS = 15_000
+const PROFILE_CACHE_TTL_MS = 45_000
+const DIRECTORY_CACHE_TTL_MS = 45_000
+const REQUEST_CACHE_KEY_PREFIX = 'api-get:'
+const API_LIST_PAGE_SIZE = 120
+const MAX_SYNC_PAGES = 500
+const MAX_INCREMENTAL_SYNC_PAGES = 180
+
+const requestResponseCache = new Map()
+const inflightGetRequests = new Map()
+
 function buildUrl(path) {
   if (/^https?:\/\//i.test(path)) {
     return path
@@ -280,49 +291,288 @@ function pickErrorMessage(payload) {
   return ''
 }
 
-async function request(path, { method = 'GET', body, unwrapData = true } = {}) {
-  const token = await refreshKeycloakToken(30).catch(() => null)
-  const response = await fetch(buildUrl(path), {
-    method,
-    headers: {
-      Accept: 'application/json',
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+const TOKEN_CACHE_TTL_MS = 10_000
+const EMPTY_TOKEN_CACHE_TTL_MS = 1_000
 
-  const text = await response.text()
-  const payload = parsePayloadText(text)
+let authTokenCache = {
+  value: null,
+  expiresAt: 0,
+}
+let inflightAuthTokenPromise = null
+
+async function getRequestAuthToken() {
+  if (Date.now() < authTokenCache.expiresAt) {
+    return authTokenCache.value
+  }
+
+  if (!inflightAuthTokenPromise) {
+    inflightAuthTokenPromise = refreshKeycloakToken(30)
+      .catch(() => null)
+      .then((token) => {
+        authTokenCache = {
+          value: token,
+          expiresAt: Date.now() + (token ? TOKEN_CACHE_TTL_MS : EMPTY_TOKEN_CACHE_TTL_MS),
+        }
+        return token
+      })
+      .finally(() => {
+        inflightAuthTokenPromise = null
+      })
+  }
+
+  return inflightAuthTokenPromise
+}
+
+function getRequestCacheKey(path) {
+  return `${REQUEST_CACHE_KEY_PREFIX}${path}`
+}
+
+function getCachedResponse(cacheKey) {
+  const cached = requestResponseCache.get(cacheKey)
+  if (!cached) {
+    return null
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    requestResponseCache.delete(cacheKey)
+    return null
+  }
+
+  return cached.value
+}
+
+function setCachedResponse(cacheKey, value, ttlMs) {
+  if (!ttlMs || ttlMs <= 0) {
+    return
+  }
+
+  requestResponseCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  })
+}
+
+function invalidateRequestCache(pathPrefix = '') {
+  const normalizedPrefix = getRequestCacheKey(pathPrefix)
+  if (!pathPrefix) {
+    requestResponseCache.clear()
+    return
+  }
+
+  for (const key of requestResponseCache.keys()) {
+    if (key === normalizedPrefix || key.startsWith(normalizedPrefix)) {
+      requestResponseCache.delete(key)
+    }
+  }
+}
+
+export function clearApiCache(pathPrefix = '') {
+  invalidateRequestCache(pathPrefix)
+}
+
+function createRequestError(message, response, payload) {
+  const error = new Error(message)
+  if (response) {
+    error.status = response.status
+  }
+  if (payload !== undefined) {
+    error.payload = payload
+  }
+  return error
+}
+
+function requestWithErrorDetails(message, response, payload) {
+  throw createRequestError(message, response, payload)
+}
+
+async function request(path, {
+  method = 'GET',
+  body,
+  unwrapData = true,
+  cacheTtlMs = GET_REQUEST_CACHE_TTL_MS,
+} = {}) {
+  const normalizedMethod = String(method || 'GET').toUpperCase()
+  const isReadOnly = normalizedMethod === 'GET'
+  const cacheKey = isReadOnly ? getRequestCacheKey(path) : null
+
+  if (isReadOnly && cacheKey) {
+    const cached = getCachedResponse(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    const inFlight = inflightGetRequests.get(cacheKey)
+    if (inFlight) {
+      return inFlight
+    }
+  }
+
+  const token = await getRequestAuthToken()
+
+  const requestPromise = (async () => {
+    const response = await fetch(buildUrl(path), {
+      method: normalizedMethod,
+      headers: {
+        Accept: 'application/json',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+
+    if (response.status === 401 || response.status === 403) {
+      authTokenCache = {
+        value: null,
+        expiresAt: 0,
+      }
+    }
+
+    const text = await response.text()
+    const payload = parsePayloadText(text)
+
+    if (!response.ok) {
+      const message = pickErrorMessage(payload) || `Request failed with status ${response.status}`
+      return requestWithErrorDetails(message, response, payload)
+    }
+
+    if (payload && typeof payload === 'object' && typeof payload.status === 'number' && payload.status >= 400) {
+      const message = pickErrorMessage(payload) || `Request failed with status ${payload.status}`
+      return requestWithErrorDetails(message, response, payload)
+    }
+
+    const resolvedPayload =
+      unwrapData && payload && typeof payload === 'object' && 'data' in payload
+        ? payload.data
+        : payload
+
+    if (cacheKey && isReadOnly && cacheTtlMs > 0 && payload !== undefined) {
+      setCachedResponse(cacheKey, resolvedPayload, cacheTtlMs)
+    }
+
+    return resolvedPayload
+  })()
+
+  if (isReadOnly && cacheKey) {
+    inflightGetRequests.set(cacheKey, requestPromise)
+    requestPromise.finally(() => {
+      if (inflightGetRequests.get(cacheKey) === requestPromise) {
+        inflightGetRequests.delete(cacheKey)
+      }
+    })
+  }
+
+  return requestPromise
+}
+
+function buildAdminReportPath({ reportType, search = '', format = 'json' }) {
+  const params = new URLSearchParams()
+  if (reportType) {
+    params.set('type', reportType)
+  }
+  const normalizedSearch = String(search || '').trim()
+  if (normalizedSearch) {
+    params.set('search', normalizedSearch)
+  }
+  if (format) {
+    params.set('format', format)
+  }
+
+  const query = params.toString()
+  return `/app/api/reports/${query ? `?${query}` : ''}`
+}
+
+function parseContentDispositionFilename(value) {
+  if (!value) {
+    return null
+  }
+  const utf8Match = value.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1])
+    } catch {
+      return utf8Match[1]
+    }
+  }
+
+  const quotedMatch = value.match(/filename="([^"]+)"/i)
+  if (quotedMatch) {
+    return quotedMatch[1]
+  }
+
+  const rawMatch = value.match(/filename=([^;]+)/i)
+  return rawMatch ? rawMatch[1].replace(/^\s+|\s+$/g, '') : null
+}
+
+export async function generateAdminReport({
+  reportType,
+  search = '',
+} = {}) {
+  if (!reportType) {
+    throw new Error('reportType is required')
+  }
+
+  return request(buildAdminReportPath({ reportType, search }), {
+    cacheTtlMs: 0,
+  })
+}
+
+export async function downloadAdminReport({
+  reportType,
+  search = '',
+} = {}) {
+  if (!reportType) {
+    throw new Error('reportType is required')
+  }
+
+  const token = await getRequestAuthToken()
+  const response = await fetch(
+    buildUrl(buildAdminReportPath({ reportType, search, format: 'csv' })),
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'text/csv',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
 
   if (!response.ok) {
+    const payloadText = await response.text()
+    const payload = parsePayloadText(payloadText)
     const message = pickErrorMessage(payload) || `Request failed with status ${response.status}`
-    throw new Error(message)
+    return requestWithErrorDetails(message, response, payload)
   }
 
-  if (payload && typeof payload === 'object' && typeof payload.status === 'number' && payload.status >= 400) {
-    const message = pickErrorMessage(payload) || `Request failed with status ${payload.status}`
-    throw new Error(message)
-  }
+  const blob = await response.blob()
+  const contentDisposition = response.headers.get('content-disposition') || ''
+  const defaultDate = new Date().toISOString().slice(0, 10)
+  const fallbackName = `${String(reportType).replace(/[^a-z0-9_-]+/gi, '_')}-${defaultDate}.csv`
+  const filename = parseContentDispositionFilename(contentDisposition) || fallbackName
 
-  if (unwrapData && payload && typeof payload === 'object' && 'data' in payload) {
-    return payload.data
+  return {
+    blob,
+    filename,
   }
-
-  return payload
 }
 
 export async function getCurrentProfile() {
-  return request('/app/me/', { unwrapData: false })
+  return request('/app/me/', {
+    unwrapData: false,
+    cacheTtlMs: PROFILE_CACHE_TTL_MS,
+  })
 }
 
 export async function getDepartmentMemberDirectory() {
-  return request('/app/api/directory/department-members/')
+  return request('/app/api/directory/department-members/', {
+    cacheTtlMs: DIRECTORY_CACHE_TTL_MS,
+  })
 }
 
 function createReferenceIndex(rawItems = [], nameNormalizer = null) {
   const items = []
   const byId = new Map()
+  const byName = new Map()
+  const normalizeIndexKey = (value) => String(value || '').trim().toLowerCase()
 
   rawItems.forEach((entry, index) => {
     if (!entry) {
@@ -335,7 +585,11 @@ function createReferenceIndex(rawItems = [], nameNormalizer = null) {
       if (!name) {
         return
       }
-      items.push({ id: null, name, clientKey: `name:${name.toLowerCase()}` })
+      const normalizedKey = normalizeIndexKey(name)
+      items.push({ id: null, name, clientKey: `name:${normalizedKey}` })
+      if (normalizedKey && !byName.has(normalizedKey)) {
+        byName.set(normalizedKey, null)
+      }
       return
     }
 
@@ -350,6 +604,15 @@ function createReferenceIndex(rawItems = [], nameNormalizer = null) {
     })
     if (id !== null) {
       byId.set(String(id), name)
+      const normalizedName = normalizeIndexKey(name)
+      if (normalizedName && !byName.has(normalizedName)) {
+        byName.set(normalizedName, id)
+      }
+    } else {
+      const normalizedName = normalizeIndexKey(name)
+      if (normalizedName && !byName.has(normalizedName)) {
+        byName.set(normalizedName, null)
+      }
     }
   })
   items.sort((left, right) => left.name.localeCompare(right.name))
@@ -358,6 +621,7 @@ function createReferenceIndex(rawItems = [], nameNormalizer = null) {
     items,
     names: items.map((item) => item.name),
     byId,
+    byName,
   }
 }
 
@@ -368,7 +632,20 @@ function resolveDepartmentName(value, departmentIndex) {
   if (typeof value === 'object') {
     return normalizeDepartmentName(value.name ?? value.title ?? String(extractId(value) ?? ''))
   }
-  return normalizeDepartmentName(departmentIndex.byId.get(String(value)) || String(value))
+
+  const normalizedValue = normalizeDepartmentName(String(value))
+  if (!normalizedValue) {
+    return ''
+  }
+
+  const rawValue = String(value)
+  const directMatch = departmentIndex?.byId?.get(rawValue) || departmentIndex?.byId?.get(String(extractId(value) ?? ''))
+
+  return normalizeDepartmentName(
+    directMatch
+      || departmentIndex?.byName?.get(normalizedValue.toLowerCase())
+      || rawValue,
+  )
 }
 
 function resolveDepartmentValue(value, departmentItems) {
@@ -380,11 +657,20 @@ function resolveDepartmentValue(value, departmentItems) {
   }
 
   const normalized = normalizeDepartmentName(value)
-  const match = departmentItems.find(
-    (item) => normalizeDepartmentName(item.name) === normalized,
-  )
+  const normalizedKey = normalized.toLowerCase()
+  if (!departmentItems?.byId) {
+    const match = (Array.isArray(departmentItems) ? departmentItems : []).find(
+      (item) => normalizeDepartmentName(item?.name) === normalized,
+    )
+    return match?.id ?? normalized
+  }
 
-  return match?.id ?? normalized
+  const id = departmentItems.byId?.get(String(value))
+  if (id) {
+    return id
+  }
+
+  return departmentItems.byName?.get(normalizedKey) ?? normalized
 }
 
 function normalizeCategoryLabel(value) {
@@ -433,15 +719,215 @@ function resolveCategoryValue(value, categoryItems) {
   }
 
   const normalized = normalizeCategoryLabel(value)
-  const match = categoryItems.find(
-    (item) => normalizeCategoryLabel(item.name) === normalized,
-  )
-
-  if (match?.id !== null && match?.id !== undefined) {
-    return match.id
+  if (!categoryItems?.byId) {
+    const match = (Array.isArray(categoryItems) ? categoryItems : []).find(
+      (item) => normalizeCategoryLabel(item?.name) === normalized,
+    )
+    if (match?.id !== null && match?.id !== undefined) {
+      return match.id
+    }
+    return LEGACY_CATEGORY_TO_API[normalized] || normalized
   }
 
-  return LEGACY_CATEGORY_TO_API[normalized] || normalized
+  const matchId = categoryItems.byId?.get(String(value))
+  if (matchId !== null && matchId !== undefined) {
+    return matchId
+  }
+
+  const normalizedId = categoryItems.byName?.get(normalized.toLowerCase())
+  return normalizedId || LEGACY_CATEGORY_TO_API[normalized] || normalized
+}
+
+function invalidateRiskDatasetCache() {
+  clearApiCache('/app/api/create/risk/')
+  clearApiCache('/app/api/create/department/')
+  clearApiCache('/app/api/create/category/')
+  clearApiCache('/app/api/create/mitigation/')
+  clearApiCache('/app/api/create/decisition/')
+  clearApiCache('/app/api/create/riskactivity/')
+}
+
+function parsePayloadAsList(payload) {
+  if (Array.isArray(payload)) {
+    return {
+      data: payload,
+      pagination: null,
+      syncedUntil: null,
+    }
+  }
+  if (!payload || typeof payload !== 'object') {
+    return {
+      data: [],
+      pagination: null,
+      syncedUntil: null,
+    }
+  }
+  return {
+    data: Array.isArray(payload.data) ? payload.data : [],
+    pagination: payload.pagination && typeof payload.pagination === 'object' ? payload.pagination : null,
+    syncedUntil: payload.syncedUntil || payload.synced_at || null,
+  }
+}
+
+function toIsoDate(value) {
+  if (!value) {
+    return null
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+  return date.toISOString()
+}
+
+function latestSyncMarker(...collections) {
+  let latest = null
+  if (!collections.length) {
+    return null
+  }
+
+  const toTimestamp = (value) => {
+    const iso = toIsoDate(value)
+    if (!iso) {
+      return null
+    }
+    const asNumber = Date.parse(iso)
+    return Number.isNaN(asNumber) ? null : asNumber
+  }
+
+  collections.forEach((collection) => {
+    if (!collection) {
+      return
+    }
+
+    if (typeof collection === 'string' || typeof collection === 'number') {
+      const candidate = toTimestamp(collection)
+      if (candidate && (!latest || candidate > latest)) {
+        latest = candidate
+      }
+      return
+    }
+
+    if (Array.isArray(collection)) {
+      collection.forEach((item) => {
+        const candidate = toTimestamp(
+          item?.updatedAt ||
+            item?.updated_at ||
+            item?.at ||
+            item?.decidedAt ||
+            item?.decided_at ||
+            item?.createdAt ||
+            item?.created_at,
+        )
+
+        if (candidate && (!latest || candidate > latest)) {
+          latest = candidate
+        }
+      })
+      return
+    }
+  })
+
+  return latest ? new Date(latest).toISOString() : null
+}
+
+function buildPagedPath(path, { page, pageSize, updatedSince, includeCount = false }) {
+  const params = new URLSearchParams()
+  const resolvedPage = Number.isFinite(Number(page)) ? Number(page) : 0
+  const resolvedPageSize = Number.isFinite(Number(pageSize)) ? Number(pageSize) : 0
+
+  if (resolvedPage > 0) {
+    params.set('page', String(Math.max(1, resolvedPage)))
+  }
+  if (resolvedPageSize > 0) {
+    params.set('page_size', String(Math.max(1, Math.trunc(resolvedPageSize))))
+  }
+  if (updatedSince) {
+    params.set('updated_since', updatedSince)
+  }
+  if (resolvedPage > 0 || resolvedPageSize > 0) {
+    params.set('include_count', includeCount ? '1' : '0')
+  }
+
+  const query = params.toString()
+  if (!query) {
+    return path
+  }
+
+  return `${path}?${query}`
+}
+
+async function loadPagedCollection(path, {
+  pageSize = API_LIST_PAGE_SIZE,
+  updatedSince = null,
+  maxPages = MAX_SYNC_PAGES,
+  includeCount = false,
+} = {}) {
+  const normalizedPageSize =
+    Number.isFinite(Number(pageSize)) && Number(pageSize) > 0
+      ? Math.max(1, Math.trunc(Number(pageSize)))
+      : API_LIST_PAGE_SIZE
+  const maxPageCount =
+    Number.isFinite(Number(maxPages)) && Number(maxPages) > 0
+      ? Math.max(1, Math.trunc(Number(maxPages)))
+      : 1
+
+  const payloads = []
+  let currentPage = 1
+  let pagesLoaded = 0
+  const seenPages = new Set()
+
+  while (pagesLoaded < maxPageCount) {
+    const nextPath = buildPagedPath(path, {
+      page: currentPage,
+      pageSize: normalizedPageSize,
+      updatedSince,
+      includeCount,
+    })
+
+    const payload = await request(nextPath)
+    const parsed = parsePayloadAsList(payload)
+    payloads.push(parsed)
+
+    const nextPage = Number(parsed.pagination?.next)
+    pagesLoaded += 1
+    if (Number.isNaN(nextPage) || nextPage <= 1) {
+      break
+    }
+
+    if (seenPages.has(nextPage)) {
+      break
+    }
+
+    if (nextPage <= currentPage) {
+      break
+    }
+
+    seenPages.add(nextPage)
+    currentPage = nextPage
+  }
+
+  const aggregatedData = []
+  payloads.forEach((entry) => {
+    if (Array.isArray(entry.data)) {
+      aggregatedData.push(...entry.data)
+    }
+  })
+
+  const syncedUntil = payloads.reduce((result, entry) => {
+    if (!entry.syncedUntil) {
+      return result
+    }
+    if (!result || entry.syncedUntil > result) {
+      return entry.syncedUntil
+    }
+    return result
+  }, null)
+
+  return {
+    data: aggregatedData,
+    syncedUntil,
+  }
 }
 
 function sortByDateDesc(items, key) {
@@ -670,21 +1156,45 @@ function normalizeRiskRecord(entry, { departmentIndex, categoryIndex, decisionsB
   }
 }
 
-export async function loadErmDataset() {
+export async function loadErmDataset({
+  incremental = false,
+  since = null,
+  pageSize = API_LIST_PAGE_SIZE,
+} = {}) {
   const [
     rawDepartments,
-    rawRisks,
     rawCategories,
+    rawRisks,
     rawMitigations,
     rawDecisions,
     rawActivities,
   ] = await Promise.all([
     request('/app/api/create/department/'),
-    request('/app/api/create/risk/'),
     request('/app/api/create/category/'),
-    request('/app/api/create/mitigation/'),
-    request('/app/api/create/decisition/'),
-    request('/app/api/create/riskactivity/'),
+    loadPagedCollection('/app/api/create/risk/', {
+      pageSize,
+      updatedSince: incremental ? since : null,
+      maxPages: incremental ? MAX_INCREMENTAL_SYNC_PAGES : MAX_SYNC_PAGES,
+      includeCount: false,
+    }),
+    loadPagedCollection('/app/api/create/mitigation/', {
+      pageSize,
+      updatedSince: incremental ? since : null,
+      maxPages: incremental ? MAX_INCREMENTAL_SYNC_PAGES : MAX_SYNC_PAGES,
+      includeCount: false,
+    }),
+    loadPagedCollection('/app/api/create/decisition/', {
+      pageSize,
+      updatedSince: incremental ? since : null,
+      maxPages: incremental ? MAX_INCREMENTAL_SYNC_PAGES : MAX_SYNC_PAGES,
+      includeCount: false,
+    }),
+    loadPagedCollection('/app/api/create/riskactivity/', {
+      pageSize,
+      updatedSince: incremental ? since : null,
+      maxPages: incremental ? MAX_INCREMENTAL_SYNC_PAGES : MAX_SYNC_PAGES,
+      includeCount: false,
+    }),
   ])
 
   const departmentIndex = createReferenceIndex(
@@ -696,13 +1206,18 @@ export async function loadErmDataset() {
     normalizeCategoryLabel,
   )
 
+  const riskPayload = parsePayloadAsList(rawRisks)
+  const mitigationPayload = parsePayloadAsList(rawMitigations)
+  const decisionPayload = parsePayloadAsList(rawDecisions)
+  const activityPayload = parsePayloadAsList(rawActivities)
+
   const decisionLogs = sortByDateDesc(
-    (Array.isArray(rawDecisions) ? rawDecisions : []).map(normalizeDecisionRecord),
+    (Array.isArray(decisionPayload.data) ? decisionPayload.data : []).map(normalizeDecisionRecord),
     'decidedAt',
   )
 
   const activities = sortByDateDesc(
-    (Array.isArray(rawActivities) ? rawActivities : []).map(normalizeActivityRecord),
+    (Array.isArray(activityPayload.data) ? activityPayload.data : []).map(normalizeActivityRecord),
     'at',
   )
 
@@ -710,7 +1225,7 @@ export async function loadErmDataset() {
   const activitiesByRisk = groupBy(activities, 'riskId')
 
   const risks = sortByDateDesc(
-    (Array.isArray(rawRisks) ? rawRisks : []).map((entry) =>
+    (Array.isArray(riskPayload.data) ? riskPayload.data : []).map((entry) =>
       normalizeRiskRecord(entry, {
         departmentIndex,
         categoryIndex,
@@ -722,8 +1237,19 @@ export async function loadErmDataset() {
   )
 
   const mitigationActions = sortByDateAsc(
-    (Array.isArray(rawMitigations) ? rawMitigations : []).map(normalizeMitigationRecord),
+    (Array.isArray(mitigationPayload.data) ? mitigationPayload.data : []).map(normalizeMitigationRecord),
     'createdAt',
+  )
+
+  const syncedUntil = latestSyncMarker(
+    riskPayload.syncedUntil,
+    mitigationPayload.syncedUntil,
+    decisionPayload.syncedUntil,
+    activityPayload.syncedUntil,
+    risks,
+    mitigationActions,
+    decisionLogs,
+    activities,
   )
 
   return {
@@ -734,13 +1260,23 @@ export async function loadErmDataset() {
     risks,
     mitigationActions,
     decisionLogs,
+    sync: {
+      since: syncedUntil,
+      risks: riskPayload.syncedUntil,
+      mitigation: mitigationPayload.syncedUntil,
+      decisions: decisionPayload.syncedUntil,
+      activities: activityPayload.syncedUntil,
+    },
   }
 }
 
 export async function createRiskRecord(risk, departmentItems = [], categoryItems = []) {
+  invalidateRiskDatasetCache()
+  const departmentIndex = createReferenceIndex(departmentItems, normalizeDepartmentName)
+  const categoryIndex = createReferenceIndex(categoryItems, normalizeCategoryLabel)
   return request('/app/api/create/risk/', {
     method: 'POST',
-    body: buildRiskPayload(risk, departmentItems, categoryItems),
+    body: buildRiskPayload(risk, departmentIndex, categoryIndex),
   })
 }
 
@@ -748,13 +1284,22 @@ export async function getRiskRecord(
   riskId,
   { departmentItems = [], categoryItems = [], decisionLogs = [], auditItems = [] } = {},
 ) {
-  const rawRisks = await request('/app/api/create/risk/')
-  let rawRisk = (Array.isArray(rawRisks) ? rawRisks : []).find(
-    (entry) => String(entry?.id ?? entry?.risk_id ?? entry?.riskId ?? '') === String(riskId),
-  )
+  let rawRisk
+  try {
+    rawRisk = await request(`/app/api/crud/risk/${riskId}/`, {
+      cacheTtlMs: 0,
+    })
+  } catch (error) {
+    if (!error || error.status !== 404) {
+      throw error
+    }
 
-  if (!rawRisk) {
-    rawRisk = await request(`/app/api/crud/risk/${riskId}/`)
+    const rawRisks = await request('/app/api/create/risk/', {
+      cacheTtlMs: GET_REQUEST_CACHE_TTL_MS,
+    })
+    rawRisk = (Array.isArray(rawRisks) ? rawRisks : []).find(
+      (entry) => String(entry?.id ?? entry?.risk_id ?? entry?.riskId ?? '') === String(riskId),
+    )
   }
 
   const departmentIndex = createReferenceIndex(departmentItems, normalizeDepartmentName)
@@ -779,10 +1324,13 @@ export async function updateRiskRecord(
   categoryItems = [],
   { useCreatorEndpoint = false, partialUpdates = null } = {},
 ) {
+  invalidateRiskDatasetCache()
+  const departmentIndex = createReferenceIndex(departmentItems, normalizeDepartmentName)
+  const categoryIndex = createReferenceIndex(categoryItems, normalizeCategoryLabel)
   const path = useCreatorEndpoint ? `/app/api/risk/crud/user/${riskId}/` : `/app/api/crud/risk/${riskId}/`
   const body = partialUpdates
-    ? buildPartialRiskPayload(partialUpdates, risk, departmentItems, categoryItems)
-    : buildRiskPayload(risk, departmentItems, categoryItems)
+    ? buildPartialRiskPayload(partialUpdates, risk, departmentIndex, categoryIndex)
+    : buildRiskPayload(risk, departmentIndex, categoryIndex)
 
   return request(path, {
     method: 'PATCH',
@@ -791,6 +1339,8 @@ export async function updateRiskRecord(
 }
 
 export async function createDepartmentRecord(name) {
+  clearApiCache('/app/api/create/department/')
+  clearApiCache('/app/api/create/risk/')
   const payload = await request('/app/api/create/department/', {
     method: 'POST',
     body: { name },
@@ -804,6 +1354,8 @@ export async function createDepartmentRecord(name) {
 }
 
 export async function updateDepartmentRecord(id, name) {
+  clearApiCache('/app/api/create/department/')
+  clearApiCache('/app/api/create/risk/')
   return request(`/app/api/crud/department/${id}/`, {
     method: 'PATCH',
     body: { name },
@@ -811,6 +1363,8 @@ export async function updateDepartmentRecord(id, name) {
 }
 
 export async function deleteDepartmentRecord(id) {
+  clearApiCache('/app/api/create/department/')
+  clearApiCache('/app/api/create/risk/')
   return request(`/app/api/crud/department/${id}/`, {
     method: 'DELETE',
     unwrapData: false,
@@ -818,6 +1372,8 @@ export async function deleteDepartmentRecord(id) {
 }
 
 export async function createCategoryRecord(name) {
+  clearApiCache('/app/api/create/category/')
+  clearApiCache('/app/api/create/risk/')
   const payload = await request('/app/api/create/category/', {
     method: 'POST',
     body: { name },
@@ -831,6 +1387,8 @@ export async function createCategoryRecord(name) {
 }
 
 export async function updateCategoryRecord(id, name) {
+  clearApiCache('/app/api/create/category/')
+  clearApiCache('/app/api/create/risk/')
   return request(`/app/api/crud/category/${id}/`, {
     method: 'PATCH',
     body: { name },
@@ -838,6 +1396,8 @@ export async function updateCategoryRecord(id, name) {
 }
 
 export async function deleteCategoryRecord(id) {
+  clearApiCache('/app/api/create/category/')
+  clearApiCache('/app/api/create/risk/')
   return request(`/app/api/crud/category/${id}/`, {
     method: 'DELETE',
     unwrapData: false,
@@ -845,6 +1405,7 @@ export async function deleteCategoryRecord(id) {
 }
 
 export async function createDecisionRecord(entry) {
+  invalidateRiskDatasetCache()
   return request('/app/api/create/decisition/', {
     method: 'POST',
     body: {
@@ -858,6 +1419,7 @@ export async function createDecisionRecord(entry) {
 }
 
 export async function createMitigationRecord(entry) {
+  invalidateRiskDatasetCache()
   const payload = await request('/app/api/create/mitigation/', {
     method: 'POST',
     body: {
@@ -888,6 +1450,7 @@ export async function createMitigationRecord(entry) {
 }
 
 export async function updateMitigationRecord(actionId, entry, { useStaffEndpoint = false } = {}) {
+  invalidateRiskDatasetCache()
   const path = useStaffEndpoint
     ? `/app/api/crud/mitigation/staff/${actionId}/`
     : `/app/api/crud/mitigation/${actionId}/`
@@ -921,6 +1484,7 @@ export async function updateMitigationRecord(actionId, entry, { useStaffEndpoint
 }
 
 export async function createActivityRecord(riskId, event) {
+  invalidateRiskDatasetCache()
   return request('/app/api/create/riskactivity/', {
     method: 'POST',
     body: {
@@ -938,16 +1502,22 @@ export async function createActivityRecord(riskId, event) {
 function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
   const probabilityLevel = normalizeProbabilityLevel(risk.probability)
   const impactLevel = normalizeImpactLevel(risk.severity ?? risk.Impact ?? risk.impact)
+  const departmentIndex = departmentItems?.byId
+    ? departmentItems
+    : createReferenceIndex(departmentItems, normalizeDepartmentName)
+  const categoryIndex = categoryItems?.byId
+    ? categoryItems
+    : createReferenceIndex(categoryItems, normalizeCategoryLabel)
   const responsibleDepartmentValue = resolveDepartmentValue(
     risk.mitigationDepartment ?? risk.department,
-    departmentItems,
+    departmentIndex,
   )
 
   return {
     title: risk.title?.trim() ?? '',
     description: risk.description?.trim() ?? '',
-    category: resolveCategoryValue(risk.category, categoryItems),
-    department: resolveDepartmentValue(risk.department, departmentItems),
+    category: resolveCategoryValue(risk.category, categoryIndex),
+    department: resolveDepartmentValue(risk.department, departmentIndex),
     owner: risk.owner?.trim() ?? '',
     responsible: risk.responsible?.trim() ?? '',
     responsible_department_id: responsibleDepartmentValue,
@@ -966,6 +1536,12 @@ function buildRiskPayload(risk, departmentItems = [], categoryItems = []) {
 
 function buildPartialRiskPayload(updates, risk, departmentItems = [], categoryItems = []) {
   const source = { ...(risk || {}), ...(updates || {}) }
+  const departmentIndex = departmentItems?.byId
+    ? departmentItems
+    : createReferenceIndex(departmentItems, normalizeDepartmentName)
+  const categoryIndex = categoryItems?.byId
+    ? categoryItems
+    : createReferenceIndex(categoryItems, normalizeCategoryLabel)
   const body = {}
 
   if ('title' in updates) {
@@ -975,10 +1551,10 @@ function buildPartialRiskPayload(updates, risk, departmentItems = [], categoryIt
     body.description = source.description?.trim() ?? ''
   }
   if ('category' in updates) {
-    body.category = resolveCategoryValue(source.category, categoryItems)
+    body.category = resolveCategoryValue(source.category, categoryIndex)
   }
   if ('department' in updates) {
-    body.department = resolveDepartmentValue(source.department, departmentItems)
+    body.department = resolveDepartmentValue(source.department, departmentIndex)
   }
   if ('owner' in updates) {
     body.owner = source.owner?.trim() ?? ''
@@ -997,7 +1573,7 @@ function buildPartialRiskPayload(updates, risk, departmentItems = [], categoryIt
         source.responsibleDepartmentId ??
         source.responsible_department_id ??
         source.department,
-      departmentItems,
+      departmentIndex,
     )
   }
   if ('status' in updates) {

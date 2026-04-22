@@ -1,4 +1,4 @@
-import { ArrowUpDown, Settings2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpDown, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
@@ -18,6 +18,36 @@ function getComparableValue(value) {
   return value ?? ''
 }
 
+const DEFAULT_PAGE_SIZE = 25
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
+
+function normalizeStoragePageSize(raw) {
+  const value = Number(raw)
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PAGE_SIZE
+  }
+
+  const normalized = Math.max(1, Math.floor(value))
+  return PAGE_SIZE_OPTIONS.includes(normalized) ? normalized : DEFAULT_PAGE_SIZE
+}
+
+function buildPageSizeStorageKey(storageKey) {
+  return `${storageKey}:pageSize`
+}
+
+function clampPage(page, pageCount) {
+  if (pageCount <= 0) {
+    return 1
+  }
+  if (page < 1) {
+    return 1
+  }
+  if (page > pageCount) {
+    return pageCount
+  }
+  return page
+}
+
 export default function DataTable({
   title,
   columns,
@@ -30,9 +60,9 @@ export default function DataTable({
   compactRowRenderer,
 }) {
   const { t } = useI18n()
-
-  const initialPreferences = storageKey
-    ? loadFromStorage(storageKey, {
+  const normalizedStorageKey = storageKey ? String(storageKey) : null
+  const initialPreferences = normalizedStorageKey
+    ? loadFromStorage(normalizedStorageKey, {
         visibleColumns: Object.fromEntries(
           columns.map((column) => [column.key, column.defaultVisible !== false]),
         ),
@@ -49,14 +79,29 @@ export default function DataTable({
   const [showSettings, setShowSettings] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState(initialPreferences.visibleColumns)
   const [density, setDensity] = useState(initialPreferences.density)
+  const [requestedPage, setRequestedPage] = useState(1)
+  const [pageSize, setPageSize] = useState(
+    normalizedStorageKey
+      ? normalizeStoragePageSize(
+          loadFromStorage(buildPageSizeStorageKey(normalizedStorageKey), DEFAULT_PAGE_SIZE),
+        )
+      : DEFAULT_PAGE_SIZE,
+  )
   const settingsRef = useRef(null)
 
   useEffect(() => {
-    if (!storageKey) {
+    if (!normalizedStorageKey) {
       return
     }
-    saveToStorage(storageKey, { visibleColumns, density })
-  }, [density, storageKey, visibleColumns])
+    saveToStorage(normalizedStorageKey, { visibleColumns, density })
+  }, [density, normalizedStorageKey, visibleColumns])
+
+  useEffect(() => {
+    if (!normalizedStorageKey) {
+      return
+    }
+    saveToStorage(buildPageSizeStorageKey(normalizedStorageKey), pageSize)
+  }, [pageSize, normalizedStorageKey])
 
   useEffect(() => {
     if (!showSettings) {
@@ -124,12 +169,53 @@ export default function DataTable({
     return copy
   }, [columns, data, sort])
 
+  const pageCount = useMemo(() => {
+    if (!pageSize) {
+      return 1
+    }
+    const rowCount = sortedData?.length || 0
+    return Math.max(1, Math.ceil(rowCount / pageSize))
+  }, [pageSize, sortedData])
+
+  const safePage = clampPage(requestedPage, pageCount)
+  const hasPagination = pageCount > 1
+
+  const pagedData = useMemo(() => {
+    if (!safePage || !pageSize) {
+      return sortedData
+    }
+
+    const start = (safePage - 1) * pageSize
+    return sortedData.slice(start, start + pageSize)
+  }, [pageSize, safePage, sortedData])
+
   const rowPadding = density === 'compact' ? 'py-1.5' : 'py-3.5'
   const headerPadding = density === 'compact' ? 'py-1.5' : 'py-2'
   const bodyTextClass = density === 'compact' ? 'text-[13px]' : 'text-sm'
+  const hasHeaderTitle = Boolean(title)
+
   const renderCell = (column, row) => (column.render ? column.render(row, { density }) : row[column.key])
 
-  const hasHeaderTitle = Boolean(title)
+  const goToPage = (nextPage) => {
+    setRequestedPage(clampPage(nextPage, pageCount))
+  }
+
+  const goPrev = () => {
+    goToPage(safePage - 1)
+  }
+
+  const goNext = () => {
+    goToPage(safePage + 1)
+  }
+
+  const handleSort = (key) => {
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    }))
+    setRequestedPage(1)
+  }
 
   return (
     <div className="panel overflow-visible rounded-[24px] dark:border-[#314E82] dark:bg-[#132445]">
@@ -147,7 +233,7 @@ export default function DataTable({
             <button
               type="button"
               className={clsx(
-                'rounded-lg px-2.5 py-1.5 text-xs',
+                'rounded-lg px-2.5 py-1 text-xs',
                 density === 'comfortable'
                   ? 'bg-[#0041B6] text-white'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59]',
@@ -159,7 +245,7 @@ export default function DataTable({
             <button
               type="button"
               className={clsx(
-                'rounded-lg px-2.5 py-1.5 text-xs',
+                'rounded-lg px-2.5 py-1 text-xs',
                 density === 'compact'
                   ? 'bg-[#0041B6] text-white'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-[#C9D8F7] dark:hover:bg-[#1A2F59]',
@@ -212,10 +298,10 @@ export default function DataTable({
         </div>
       </div>
 
-      {sortedData.length ? (
+      {pagedData.length ? (
         <>
           <div className="space-y-3 p-3 md:hidden">
-            {sortedData.map((row) => {
+            {pagedData.map((row) => {
               const primaryColumn =
                 activeColumns.find((column) => column.key === 'title') ??
                 activeColumns.find((column) => column.key === 'id') ??
@@ -271,84 +357,127 @@ export default function DataTable({
           </div>
 
           <div className="hidden overflow-x-auto md:block">
-          {density === 'compact' && compactRowRenderer ? (
-            <div className="grid gap-3 bg-white p-3 md:grid-cols-2 2xl:grid-cols-3 dark:bg-[#132445]">
-              {sortedData.map((row) => (
-                <div
-                  key={row[rowKey]}
-                  className={clsx(
-                    'h-full rounded-2xl border border-[#D9D9D9] bg-[#FBFCFE] p-4 dark:border-[#2F4878] dark:bg-[#10203D]',
-                    onRowClick ? 'cursor-pointer transition-colors hover:bg-white dark:hover:bg-[#17305A]' : '',
-                  )}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {compactRowRenderer(row)}
-                </div>
-              ))}
-            </div>
-          ) : (
-          <table className="min-w-full">
-            <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#10203D]">
-              <tr>
-                {activeColumns.map((column) => (
-                  <th
-                    key={column.key}
-                    scope="col"
+            {density === 'compact' && compactRowRenderer ? (
+              <div className="grid gap-3 bg-white p-3 md:grid-cols-2 2xl:grid-cols-3 dark:bg-[#132445]">
+                {pagedData.map((row) => (
+                  <div
+                    key={row[rowKey]}
                     className={clsx(
-                      `whitespace-nowrap px-4 ${headerPadding} text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400`,
-                      column.align === 'right' ? 'text-right' : 'text-left',
+                      'h-full rounded-2xl border border-[#D9D9D9] bg-[#FBFCFE] p-4 dark:border-[#2F4878] dark:bg-[#10203D]',
+                      onRowClick ? 'cursor-pointer transition-colors hover:bg-white dark:hover:bg-[#17305A]' : '',
                     )}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
-                    {column.sortable ? (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1"
-                        onClick={() =>
-                          setSort((current) => ({
-                            key: column.key,
-                            direction:
-                              current.key === column.key && current.direction === 'desc' ? 'asc' : 'desc',
-                          }))
-                        }
-                      >
-                        {column.label}
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      </button>
-                    ) : (
-                      column.label
-                    )}
-                  </th>
+                    {compactRowRenderer(row)}
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D9D9D9] bg-white dark:divide-[#2F4878] dark:bg-[#132445]">
-              {sortedData.map((row) => (
-                <tr
-                  key={row[rowKey]}
-                  className={clsx(
-                    onRowClick
-                      ? 'cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-[#1A2F59]/70'
-                      : '',
-                  )}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {activeColumns.map((column) => (
-                    <td
-                      key={`${row[rowKey]}-${column.key}`}
+              </div>
+            ) : (
+              <table className="min-w-full">
+                <thead className="sticky top-0 z-[1] bg-[#F6F8FC] dark:bg-[#10203D]">
+                  <tr>
+                    {activeColumns.map((column) => (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        className={clsx(
+                          `whitespace-nowrap px-4 ${headerPadding} text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400`,
+                          column.align === 'right' ? 'text-right' : 'text-left',
+                        )}
+                      >
+                        {column.sortable ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1"
+                            onClick={() => handleSort(column.key)}
+                          >
+                            {column.label}
+                            <ArrowUpDown className="h-3 w-3 opacity-50" />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#D9D9D9] bg-white dark:divide-[#2F4878] dark:bg-[#132445]">
+                  {pagedData.map((row) => (
+                    <tr
+                      key={row[rowKey]}
                       className={clsx(
-                        `px-4 ${bodyTextClass} text-slate-700 dark:text-slate-200 ${rowPadding}`,
-                        column.align === 'right' ? 'text-right' : 'text-left',
+                        onRowClick
+                          ? 'cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-[#1A2F59]/70'
+                          : '',
                       )}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
                     >
-                      {renderCell(column, row)}
-                    </td>
+                      {activeColumns.map((column) => (
+                        <td
+                          key={`${row[rowKey]}-${column.key}`}
+                          className={clsx(
+                            `px-4 ${bodyTextClass} text-slate-700 dark:text-slate-200 ${rowPadding}`,
+                            column.align === 'right' ? 'text-right' : 'text-left',
+                          )}
+                        >
+                          {renderCell(column, row)}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          )}
+                </tbody>
+              </table>
+            )}
           </div>
+          {hasPagination ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#D9D9E5] bg-[#F6F8FC] px-3 py-2 text-xs dark:border-[#2B4774] dark:bg-[#10203D]">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={safePage <= 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-[#CBD7EE] px-2.5 py-1.5 text-slate-600 hover:bg-[#EAF0FC] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2F4878] dark:text-[#D8E5FF] dark:hover:bg-[#17305A]"
+                aria-label="Предыдущая"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Предыдущая
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-[#D4E0F4] px-2 py-1 text-[11px] text-slate-500 dark:border-[#2F4878] dark:text-[#90ADD9]">
+                  {safePage} / {pageCount}
+                </span>
+                <span className="text-slate-500 dark:text-[#9FB4D9]">
+                  Записей: {sortedData.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  className="rounded-lg border border-[#C6D2E8] bg-white px-2 py-1 text-[11px] dark:border-[#35548A] dark:bg-[#13264A]"
+                  value={pageSize}
+    onChange={(event) => {
+      const nextSize = normalizeStoragePageSize(event.target.value)
+      setPageSize(nextSize)
+      setRequestedPage(1)
+    }}
+  >
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={safePage >= pageCount}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#CBD7EE] px-2.5 py-1.5 text-slate-600 hover:bg-[#EAF0FC] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2F4878] dark:text-[#D8E5FF] dark:hover:bg-[#17305A]"
+                  aria-label="Следующая"
+                >
+                  Следующая
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="p-5">{emptyState}</div>

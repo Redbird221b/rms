@@ -10,7 +10,15 @@ import DataTable from '../components/table/DataTable'
 import { impactLevels } from '../lib/compute'
 import { formatCurrency, formatDate } from '../lib/format'
 
-function getRecordsLabel(count) {
+function getRecordsLabel(count, language = 'ru') {
+  if (language === 'en') {
+    return count === 1 ? 'record' : 'records'
+  }
+
+  if (language === 'uz') {
+    return 'ta yozuv'
+  }
+
   const mod10 = count % 10
   const mod100 = count % 100
 
@@ -26,7 +34,7 @@ function getRecordsLabel(count) {
 export default function RisksList() {
   const navigate = useNavigate()
   const { filteredRisks, categories, isBackendConnected, backendError } = useErm()
-  const { t, tr } = useI18n()
+  const { language, t, tr } = useI18n()
   const [localFilters, setLocalFilters] = useState({
     category: 'All',
     severity: 'All',
@@ -65,31 +73,31 @@ export default function RisksList() {
 
       <div className="grid gap-2 sm:grid-cols-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Владелец</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t('risks.col.owner')}</p>
           <p className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">{row.owner || '—'}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Ответственный</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t('risks.col.responsible')}</p>
           <p className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">{row.responsible || '—'}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Срок</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t('risks.col.dueDate')}</p>
           <p className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">{formatDate(row.dueDate)}</p>
         </div>
       </div>
 
       <div className="flex items-end justify-between gap-4 border-t border-[#E6EDF6] pt-3 dark:border-[#28426E]">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            Ожидаемый убыток
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            {t('risks.col.expectedLoss')}
           </p>
           <p className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
             {formatCurrency(row.expectedLoss)}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            Обновлён
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            {t('risks.col.updated')}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDate(row.updatedAt)}</p>
         </div>
@@ -187,11 +195,11 @@ export default function RisksList() {
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="inline-flex rounded-full border border-[#D9E3F2] bg-[#F7FAFF] px-3 py-1 text-xs font-medium text-[#35588F] dark:border-[#2F4878] dark:bg-[#10203D] dark:text-[#C9D8F7]">
-              {visibleRisks.length} {getRecordsLabel(visibleRisks.length)}
+              {visibleRisks.length} {getRecordsLabel(visibleRisks.length, language)}
             </span>
             {hasLocalFilters ? (
               <span className="inline-flex rounded-full border border-[#FFD9C7] bg-[#FFF3EE] px-3 py-1 text-xs font-medium text-[#B95428] dark:border-[#69422F] dark:bg-[#2A1D19] dark:text-[#FFBA97]">
-                Локальные фильтры активны
+                {t('risks.localFiltersActive')}
               </span>
             ) : null}
           </div>
@@ -200,7 +208,7 @@ export default function RisksList() {
             {t('risks.title')}
           </h1>
           <p className="mt-1.5 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-            Активные и архивные записи с быстрым переходом в карточку риска.
+            {t('risks.subtitle')}
           </p>
         </div>
 
@@ -216,13 +224,16 @@ export default function RisksList() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
           <div className="min-w-0 xl:w-64">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Локальные фильтры</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('risks.localFiltersTitle')}</h2>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-[#2F4878] dark:bg-[#10203D]/70 dark:text-slate-300">
-                {visibleRisks.length} из {filteredRisks.length}
+                {t('risks.localFiltersSummary', {
+                  visible: visibleRisks.length,
+                  total: filteredRisks.length,
+                })}
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Категория и критичность поверх общих фильтров.
+              {t('risks.localFiltersHint')}
             </p>
           </div>
 

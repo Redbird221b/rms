@@ -40,18 +40,18 @@ export default function CreateRisk() {
         subtitle={t('create.subtitle')}
       />
       {!isBackendConnected && !backendError ? (
-        <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+        <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
       ) : null}
       {!isBackendConnected && backendError ? (
         <EmptyState
-          title="Backend unavailable"
-          description={backendError || 'Unable to load data from backend.'}
+          title={t('common.backendUnavailable')}
+          description={backendError || t('common.backendUnavailableDesc')}
         />
       ) : null}
       {isBackendConnected && (!categories.length || !departments.length) ? (
         <EmptyState
-          title="Reference data missing"
-          description="Backend did not return departments or categories required for risk creation."
+          title={t('create.referenceDataMissingTitle')}
+          description={t('create.referenceDataMissingDesc')}
         />
       ) : null}
       {isBackendConnected && categories.length && departments.length ? (

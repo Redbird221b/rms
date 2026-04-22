@@ -30,7 +30,7 @@ export default function RiskHeatmap({ risks }) {
       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.chartHeatmap')}</h3>
       {hasData ? (
         <div className="mt-3 overflow-x-auto">
-          <div className="min-w-[460px]">
+          <div className="min-w-[360px] sm:min-w-[460px]">
             <div className="mb-2 grid grid-cols-6 gap-1 text-xs text-slate-500 dark:text-slate-400">
               <div />
               <div className="text-center">1</div>
@@ -49,7 +49,7 @@ export default function RiskHeatmap({ risks }) {
                   {row.map((value, colIndex) => (
                     <div
                       key={`${rowIndex}-${colIndex}`}
-                      className={`flex h-12 items-center justify-center rounded-md text-sm font-medium ${getCellStyle(
+                      className={`flex h-10 items-center justify-center rounded-md text-xs font-medium sm:h-12 sm:text-sm ${getCellStyle(
                         value,
                         max,
                       )}`}
@@ -63,14 +63,13 @@ export default function RiskHeatmap({ risks }) {
           </div>
         </div>
       ) : (
-        <div className="mt-3 flex min-h-[300px] items-center justify-center rounded-[18px] border border-dashed border-[#D9E3F2] bg-[#FAFBFE] px-6 text-center dark:border-[#29497B] dark:bg-[#10203D]">
+        <div className="mt-3 flex min-h-[220px] items-center justify-center rounded-[18px] border border-dashed border-[#D9E3F2] bg-[#FAFBFE] px-6 text-center sm:min-h-[300px] dark:border-[#29497B] dark:bg-[#10203D]">
           <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Нет данных для тепловой карты</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">После появления рисков распределение по вероятности и влиянию отобразится здесь.</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('dashboard.chartHeatmapEmptyTitle')}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('dashboard.chartHeatmapEmptyDesc')}</p>
           </div>
         </div>
       )}
     </div>
   )
 }
-

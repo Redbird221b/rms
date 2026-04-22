@@ -50,14 +50,14 @@ export default function ExpectedLossTrendChart({ data }) {
                     isDark={isDark}
                     labelFormatter={(value) => value}
                     valueFormatter={(value) => formatCurrency(value)}
-                    valueLabel="Expected loss"
+                    valueLabel={t('dashboard.chartExpectedLossMetric')}
                   />
                 }
               />
               <Line
                 type="monotone"
                 dataKey="expectedLoss"
-                name="Expected loss"
+                name={t('dashboard.chartExpectedLossMetric')}
                 stroke="#DB4300"
                 strokeWidth={2}
                 dot={false}
@@ -67,10 +67,10 @@ export default function ExpectedLossTrendChart({ data }) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="mt-3 flex min-h-[300px] items-center justify-center rounded-[18px] border border-dashed border-[#D9E3F2] bg-[#FAFBFE] px-6 text-center dark:border-[#29497B] dark:bg-[#10203D]">
+        <div className="mt-3 flex min-h-[220px] items-center justify-center rounded-[18px] border border-dashed border-[#D9E3F2] bg-[#FAFBFE] px-6 text-center sm:min-h-[300px] dark:border-[#29497B] dark:bg-[#10203D]">
           <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Нет данных для тренда</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Как только появятся активные риски с ожидаемым убытком, здесь будет показана динамика по месяцам.</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('dashboard.chartTrendEmptyTitle')}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('dashboard.chartTrendEmptyDesc')}</p>
           </div>
         </div>
       )}

@@ -29,8 +29,8 @@ npm run build
 
 ## Demo Notes
 
-- Data is mocked in `src/data/seed.js` (30 risks, mitigation actions, decision log).
-- State is persisted in `localStorage` to keep demos stable.
+- Data is loaded from backend API and cached in `localStorage` for resilience.
+- If backend is unavailable, UI shows service state instead of local mock dataset.
 - `expectedLoss` is computed from `probability * impactMostLikely`.
 - Severity thresholds are defined in `src/lib/compute.js`.
 - Subtle enterprise animations are implemented with Framer Motion for:

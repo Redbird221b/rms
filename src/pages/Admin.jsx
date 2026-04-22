@@ -1,14 +1,190 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, FolderKanban, Search, ShieldCheck, TriangleAlert, Users2 } from 'lucide-react'
+import { Building2, Download, FileText, FolderKanban, Search, ShieldCheck, Users2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useErm } from '../app/context/ErmContext'
 import { useI18n } from '../app/context/I18nContext'
 import EmptyState from '../components/common/EmptyState'
 import Tabs from '../components/common/Tabs'
 import { severityThresholds } from '../lib/compute'
-import { formatCurrency } from '../lib/format'
+import { formatCurrency, formatDate } from '../lib/format'
+import { generateAdminReport, downloadAdminReport } from '../lib/api'
 
-const ADMIN_TABS = ['departments', 'categories', 'statuses', 'thresholds', 'users']
+const ADMIN_TABS = ['departments', 'categories', 'statuses', 'thresholds', 'users', 'reports']
+const REPORT_TYPES = [
+  { value: 'risk-register', typeKey: 'admin.reports.typeRiskRegister', descriptionKey: 'admin.reports.typeRiskRegisterDescription' },
+  { value: 'status-summary', typeKey: 'admin.reports.typeStatusSummary', descriptionKey: 'admin.reports.typeStatusSummaryDescription' },
+  { value: 'department-summary', typeKey: 'admin.reports.typeDepartmentSummary', descriptionKey: 'admin.reports.typeDepartmentSummaryDescription' },
+  { value: 'decision-log', typeKey: 'admin.reports.typeDecisionLog', descriptionKey: 'admin.reports.typeDecisionLogDescription' },
+]
+
+const REPORT_COLUMN_LABELS = {
+  'risk-register': {
+    id: 'ID',
+    title: 'Риск',
+    department: 'Подразделение',
+    category: 'Категория',
+    status: 'Статус',
+    owner: 'Владелец',
+    responsible: 'Ответственный',
+    expectedLoss: 'Ожидаемый убыток',
+    updatedAt: 'Обновлено',
+  },
+  'status-summary': {
+    status: 'Статус',
+    count: 'Количество рисков',
+    totalLoss: 'Сумма ожидаемого убытка',
+    avgLoss: 'Средний убыток',
+  },
+  'department-summary': {
+    department: 'Подразделение',
+    count: 'Количество рисков',
+    totalLoss: 'Сумма ожидаемого убытка',
+    avgLoss: 'Средний убыток',
+  },
+  'decision-log': {
+    id: 'ID решения',
+    riskId: 'ID риска',
+    riskTitle: 'Риск',
+    type: 'Решение',
+    decidedBy: 'Кем принято',
+    decidedAt: 'Дата',
+    notes: 'Заметки',
+  },
+}
+
+function toSafeString(value) {
+  const next = String(value ?? '').trim()
+  return next || '—'
+}
+
+function formatReportCellValue(columnKey, value) {
+  if (value === null || value === undefined || value === '') {
+    return '—'
+  }
+  if (columnKey === 'expectedLoss' || columnKey === 'totalLoss' || columnKey === 'avgLoss') {
+    return formatCurrency(value)
+  }
+  if (columnKey === 'updatedAt' || columnKey === 'decidedAt') {
+    return formatDate(value)
+  }
+  return toSafeString(value)
+}
+
+function prepareReportPayloadForView(reportType, report, t) {
+  const metadata = resolveReportMetadata(reportType, t)
+  const columns = Array.isArray(report?.columns)
+    ? report.columns
+        .map((column) => {
+          if (!column?.key) {
+            return null
+          }
+          const localLabel = REPORT_COLUMN_LABELS[reportType]?.[column.key]
+          return {
+            key: column.key,
+            label: localLabel || column.label || column.key,
+          }
+        })
+        .filter(Boolean)
+    : []
+
+  return {
+    ...report,
+    title: metadata?.typeLabel || report?.title || reportType,
+    columns,
+  }
+}
+
+function resolveReportMetadata(reportType, t) {
+  const found = REPORT_TYPES.find((item) => item.value === reportType)
+  if (!found) {
+    return null
+  }
+  return { typeLabel: t(found.typeKey), typeDescription: t(found.descriptionKey) }
+}
+
+function ReportResult({ report, generatedAt, onDownload, rowCountLabel, t, disabled = false }) {
+  if (!report) {
+    return null
+  }
+
+  if (!Array.isArray(report.rows) || !report.rows.length) {
+    return (
+      <section className="mt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            {t('admin.reports.generatedAt', { at: formatDate(generatedAt || new Date().toISOString()) })} · {rowCountLabel}
+          </p>
+          <button
+            type="button"
+            className="btn-secondary !px-4 !py-2"
+            onClick={onDownload}
+            disabled={disabled}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Download className="h-4 w-4" />
+              {t('admin.reportsDownload')}
+            </span>
+          </button>
+        </div>
+        <EmptyState title={t('admin.reportsNoRows')} description={t('admin.reportsNoRowsDesc')} />
+      </section>
+    )
+  }
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-2xl border border-[#D2E2F7] dark:border-[#2F4878]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D9E3F2] bg-[#FBFCFE] px-4 py-3 dark:border-[#29486D] dark:bg-[#10263F]">
+        <div>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{report.title}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {t('admin.reports.generatedAt', { at: formatDate(generatedAt || new Date().toISOString()) })} · {rowCountLabel}
+          </p>
+        </div>
+          <button
+            type="button"
+            className="btn-secondary !px-4 !py-2"
+            onClick={onDownload}
+            disabled={disabled}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Download className="h-4 w-4" />
+              {t('admin.reportsDownload')}
+            </span>
+          </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#D9E3F2] bg-[#FBFCFE] text-left text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:border-[#29406B] dark:bg-[#10263F] dark:text-slate-400">
+              {report.columns.map((column) => (
+                <th key={column.key} className="px-3 py-2">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row, index) => (
+              <tr
+                key={`${row.id || row.riskId || index}-${index}`}
+                className={index % 2 === 0 ? 'bg-white dark:bg-[#0F1E3D]' : 'bg-[#F7FAFF] dark:bg-[#122B4E]'}
+              >
+                {report.columns.map((column) => (
+                  <td key={`${row.id || row.riskId || index}-${column.key}`} className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                    <span className="block break-words">
+                      {formatReportCellValue(column.key, row[column.key])}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
 
 function resolveAdminTab(value) {
   return ADMIN_TABS.includes(value) ? value : 'departments'
@@ -341,6 +517,8 @@ export default function Admin() {
     createCategory,
     updateCategory,
     deleteCategory,
+    risks,
+    decisionLogs,
     addToast,
     isBackendConnected,
     backendError,
@@ -349,18 +527,30 @@ export default function Admin() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(() => resolveAdminTab(searchParams.get('tab')))
   const [searchQuery, setSearchQuery] = useState('')
+  const [reportType, setReportType] = useState(REPORT_TYPES[0].value)
+  const [generatedReport, setGeneratedReport] = useState(null)
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false)
 
   useEffect(() => {
     const nextTab = resolveAdminTab(searchParams.get('tab'))
     setActiveTab((current) => (current === nextTab ? current : nextTab))
   }, [searchParams])
 
+  useEffect(() => {
+    if (activeTab !== 'reports') {
+      setGeneratedReport(null)
+      setIsGeneratingReport(false)
+      setIsDownloadingReport(false)
+    }
+  }, [activeTab])
+
   if (!isBackendConnected && !backendError) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
   }
 
   if (!isBackendConnected && backendError) {
-    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+    return <EmptyState title={t('common.backendUnavailable')} description={backendError || t('common.backendUnavailableDesc')} />
   }
 
   const tabs = [
@@ -369,7 +559,17 @@ export default function Admin() {
     { value: 'statuses', label: t('admin.statuses') },
     { value: 'thresholds', label: t('admin.thresholds') },
     { value: 'users', label: t('admin.users') },
+    { value: 'reports', label: t('admin.reports') },
   ]
+
+  const activeReportMetadata = resolveReportMetadata(reportType, t)
+  const isRiskRegisterReport = reportType === 'risk-register'
+  const reportRowsCountLabel = generatedReport
+    ? t('admin.reportsRowsCount', { count: generatedReport.rows?.length || 0 })
+    : ''
+  const activeSearchPlaceholder = activeTab === 'reports' && isRiskRegisterReport
+    ? t('admin.reportsSearchPlaceholder')
+    : t('admin.searchPlaceholder')
 
   const userQuery = normalizeSearchValue(searchQuery)
   const filteredUsers = !userQuery
@@ -395,6 +595,54 @@ export default function Admin() {
     { key: 'users', label: t('admin.users'), value: users.length, icon: Users2 },
   ]
 
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true)
+    setGeneratedReport(null)
+    try {
+      const report = await generateAdminReport({
+        reportType,
+        search: searchQuery,
+      })
+      setGeneratedReport(prepareReportPayloadForView(reportType, report, t))
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: t('admin.actionFailed'),
+        message: error.message || t('admin.actionFailed'),
+      })
+    } finally {
+      setIsGeneratingReport(false)
+    }
+  }
+
+  const handleDownloadReport = async () => {
+    if (!generatedReport) {
+      return
+    }
+
+    setIsDownloadingReport(true)
+    try {
+      const { blob, filename } = await downloadAdminReport({
+        reportType: generatedReport.type || reportType,
+        search: searchQuery,
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: t('admin.actionFailed'),
+        message: error.message || t('admin.actionFailed'),
+      })
+    } finally {
+      setIsDownloadingReport(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <section className="panel p-5">
@@ -408,7 +656,7 @@ export default function Admin() {
             <AdminSearch
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder={t('admin.searchPlaceholder')}
+              placeholder={activeSearchPlaceholder}
               t={t}
             />
           </div>
@@ -535,6 +783,75 @@ export default function Admin() {
             <EmptyState title={t('admin.noMatches')} description={t('admin.tryAnotherSearch')} />
           )}
         </ReadOnlyGridTab>
+      ) : null}
+
+      {activeTab === 'reports' ? (
+        <section className="panel p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+                <span className="inline-flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[#1D4ED8]" />
+                  {t('admin.reports')}
+                </span>
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {activeReportMetadata?.typeDescription || t('admin.reportsHint')}
+              </p>
+            </div>
+            <ReadOnlyBadge label={t('admin.readOnlyBadge')} />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-end">
+            <label className="flex-1 space-y-1">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t('admin.reportsTypeLabel')}
+              </span>
+              <select
+                value={reportType}
+                onChange={(event) => {
+                  setReportType(event.target.value)
+                  setGeneratedReport(null)
+                  setIsDownloadingReport(false)
+                  setIsGeneratingReport(false)
+                }}
+                className="input-field w-full"
+              >
+                {REPORT_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {t(type.typeKey)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn-primary xl:min-w-[180px]"
+              onClick={() => void handleGenerateReport()}
+              disabled={isGeneratingReport}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <FileText className="h-4 w-4" />
+                {t('admin.reportsGenerate')}
+              </span>
+            </button>
+          </div>
+
+          {generatedReport ? (
+            <ReportResult
+              report={generatedReport}
+              generatedAt={generatedReport?.generatedAt || null}
+              onDownload={handleDownloadReport}
+              disabled={isDownloadingReport}
+              rowCountLabel={reportRowsCountLabel}
+              t={t}
+            />
+          ) : (
+            <div className="mt-4">
+              <EmptyState title={t('admin.reportsEmpty')} description={t('admin.reportsEmptyDesc')} />
+            </div>
+          )}
+        </section>
       ) : null}
     </div>
   )

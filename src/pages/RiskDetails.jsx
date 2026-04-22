@@ -12,7 +12,7 @@ import {
   TrendingUp,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../app/context/AuthContext'
 import { useErm } from '../app/context/ErmContext'
@@ -95,6 +95,7 @@ export default function RiskDetails() {
     updateRisk,
     addDecision,
     addRiskActivity,
+    subscribeToRiskActivity,
     updateMitigationAction,
     addMitigationAction,
     addToast,
@@ -127,6 +128,11 @@ export default function RiskDetails() {
     severity: '',
   })
   const [newAction, setNewAction] = useState({ title: '', dueDate: '' })
+  const subscribeToRiskActivityRef = useRef(subscribeToRiskActivity)
+
+  useEffect(() => {
+    subscribeToRiskActivityRef.current = subscribeToRiskActivity
+  }, [subscribeToRiskActivity])
 
   const fallbackRisk = useMemo(
     () => scopedRisks.find((item) => String(item.id) === String(id)),
@@ -165,7 +171,6 @@ export default function RiskDetails() {
     hasAccessRole(currentUser, 'director') &&
     Boolean(risk?.mitigationDepartment) &&
     sameDepartment(currentUser.department, risk.mitigationDepartment)
-  const mitigationStageStatuses = ['Accepted for Mitigation', 'In Mitigation', 'Additional Mitigation Required']
   const mitigationPlanEditableStatuses = [
     'Committee Review 1',
     'Committee Review 2',
@@ -173,7 +178,6 @@ export default function RiskDetails() {
     'In Mitigation',
     'Additional Mitigation Required',
   ]
-  const isMitigationStage = mitigationStageStatuses.includes(risk?.status)
   const canManageMitigationPlanStatus = mitigationPlanEditableStatuses.includes(risk?.status)
   const canAssign =
     hasPermission(PERMISSIONS.ASSIGN_RESPONSIBLE) &&
@@ -272,7 +276,7 @@ export default function RiskDetails() {
     return () => {
       active = false
     }
-  }, [id, isBackendConnected, departmentItems, categoryItems, decisionLogs, fallbackRisk])
+  }, [id, isBackendConnected, departmentItems, categoryItems, decisionLogs, fallbackRisk, showErrorToast])
 
   useEffect(() => {
     let active = true
@@ -307,7 +311,7 @@ export default function RiskDetails() {
     return () => {
       active = false
     }
-  }, [assignOpen, canAssign, isBackendConnected])
+  }, [assignOpen, canAssign, isBackendConnected, showErrorToast])
 
   useEffect(() => {
     const needsDepartment =
@@ -320,6 +324,20 @@ export default function RiskDetails() {
 
     setSelectedDepartment(risk?.mitigationDepartment || risk?.department || '')
   }, [actionState.open, actionState.type, isCommitteeStage1, isCommitteeStage2, risk])
+
+  useEffect(() => {
+    if (!risk?.id || !isBackendConnected || !subscribeToRiskActivity) {
+      return
+    }
+
+    const unsubscribe = subscribeToRiskActivityRef.current?.(risk.id)
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [risk?.id, isBackendConnected, currentUser?.id])
 
   const actions = useMemo(
     () =>
@@ -420,15 +438,15 @@ export default function RiskDetails() {
   )
 
   if (!isBackendConnected && !backendError) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
   }
 
   if (!isBackendConnected && backendError) {
-    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+    return <EmptyState title={t('common.backendUnavailable')} description={backendError || t('common.backendUnavailableDesc')} />
   }
 
   if (loadingRisk && !risk) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading risk...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingRisk')}</section>
   }
 
   if (!risk) {
@@ -1014,11 +1032,6 @@ export default function RiskDetails() {
       value: risk.owner || '-',
     },
     {
-      key: 'responsible',
-      label: t('details.responsible'),
-      value: risk.responsible || '-',
-    },
-    {
       key: 'mitigation-department',
       label: t('details.mitigationDepartment'),
       value: risk.mitigationDepartment ? tr('department', risk.mitigationDepartment) : '-',
@@ -1163,7 +1176,7 @@ export default function RiskDetails() {
             })}
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {heroMetaItems.map((item) => (
               <article
                 key={item.key}

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   createActivityRecord,
   createCategoryRecord,
@@ -21,14 +29,16 @@ import {
 import { useAuth } from './AuthContext'
 import { canViewRisk, hasAccessRole, matchesRiskCreator } from '../../lib/access'
 import { applyGlobalRiskFilters } from '../../lib/compute'
-import { sameDepartment } from '../../lib/departments'
+import { normalizeDepartmentName, sameDepartment } from '../../lib/departments'
 import { loadFromStorage, saveToStorage } from '../../lib/storage'
+import { createRealtimeSocket } from '../../lib/realtime'
 
 const STORAGE_KEYS = {
   globalFilters: 'erm_global_filters_v3',
   theme: 'erm_theme_v1',
   notificationReads: 'erm_notification_reads_v1',
   datasetCache: 'erm_backend_dataset_v1',
+  syncState: 'erm_backend_sync_state_v1',
 }
 
 const defaultGlobalFilters = {
@@ -48,6 +58,10 @@ const creatorEditableStatusTokens = new Set([
   'INFO_REQUESTED_BY_COMMITTEE',
   'REQUESTED_INFO',
 ])
+const MAX_RECENT_ACTIVITY_IDS = 4000
+const MAX_RECENT_NOTIFICATION_IDS = 4000
+const MAX_INLINE_REALTIME_NOTIFICATIONS = 150
+const DEFAULT_SYNC_STATE = { since: null }
 
 function normalizeStatusToken(value) {
   return String(value || '')
@@ -137,25 +151,92 @@ function findNewestMatchingRisk(risks, candidate) {
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0]
 }
 
+function normalizeTargetValue(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
 function matchesNotificationTarget(notification, user) {
   if (!notification || !user) {
     return false
   }
 
-  if (notification.targetUserId && notification.targetUserId === user.id) {
+  const userId = normalizeTargetValue(user.id)
+  const userBackendUserId = normalizeTargetValue(user.backendUserId)
+  const userEmail = normalizeTargetValue(user.email)
+  const userRole = normalizeTargetValue(user.accessRole)
+  const userRoles = Array.isArray(user.accessRoles) ? user.accessRoles.map(normalizeTargetValue) : []
+  const userUsername = normalizeTargetValue(user.username)
+  const userName = normalizeTargetValue(user.name)
+  const userDepartment = normalizeTargetValue(user.department)
+
+  if (notification.targetUser && normalizeTargetValue(notification.targetUser) === userId) {
     return true
   }
 
-  if (notification.targetUserName && notification.targetUserName === user.name) {
+  if (notification.targetUser && userUsername && normalizeTargetValue(notification.targetUser) === userUsername) {
     return true
   }
 
-  if (notification.targetDepartment && !sameDepartment(notification.targetDepartment, user.department)) {
+  if (notification.targetUserId && normalizeTargetValue(notification.targetUserId) === userId) {
+    return true
+  }
+
+  if (notification.targetUserName && normalizeTargetValue(notification.targetUserName) === userUsername) {
+    return true
+  }
+
+  if (notification.targetUserName && normalizeTargetValue(notification.targetUserName) === userName) {
+    return true
+  }
+
+  if (notification.targetUserEmail && normalizeTargetValue(notification.targetUserEmail) === userEmail) {
+    return true
+  }
+
+  if (notification.targetEmail && normalizeTargetValue(notification.targetEmail) === userEmail) {
+    return true
+  }
+
+  if (notification.targetBackendUserId && normalizeTargetValue(notification.targetBackendUserId) === userBackendUserId) {
+    return true
+  }
+
+  if (notification.targetKeycloakSubject && normalizeTargetValue(notification.targetKeycloakSubject) === normalizeTargetValue(user.keycloakSubject)) {
+    return true
+  }
+
+  const targetRole = normalizeTargetValue(notification.targetRole)
+  if (targetRole && userRoles.length === 0) {
+    if (targetRole !== userRole) {
+      return false
+    }
+  } else if (targetRole && userRoles.length > 0 && !userRoles.includes(targetRole)) {
     return false
   }
 
-  if (notification.targetRole && notification.targetRole !== user.accessRole) {
+  if (targetRole) {
+    return true
+  }
+
+  const targetDepartment = notification.targetDepartment
+  if (targetDepartment && !sameDepartment(targetDepartment, userDepartment)) {
     return false
+  }
+
+  if (targetDepartment) {
+    return true
+  }
+
+  if (notification.targetUsername && normalizeTargetValue(notification.targetUsername) === userUsername) {
+    return true
+  }
+
+  if (notification.targetName && normalizeTargetValue(notification.targetName) === userName) {
+    return true
+  }
+
+  if (notification.targetEmail && normalizeTargetValue(notification.targetEmail) === userEmail) {
+    return true
   }
 
   return Boolean(notification.targetDepartment || notification.targetRole)
@@ -206,6 +287,196 @@ function hasDatasetContent(dataset) {
   )
 }
 
+function normalizeIncomingAuditEvent(riskId, rawEvent, currentUser) {
+  const resolvedRiskId = String(rawEvent?.riskId ?? rawEvent?.risk ?? riskId ?? '').trim()
+  const type = String(rawEvent?.type || 'update').toLowerCase()
+
+  return {
+    id: rawEvent?.id,
+    riskId: resolvedRiskId,
+    type,
+    title: rawEvent?.title || 'Risk updated',
+    notes: rawEvent?.notes || '',
+    by: rawEvent?.by || currentUser?.name || 'System',
+    at: rawEvent?.at || new Date().toISOString(),
+    diff: rawEvent?.diff || null,
+  }
+}
+
+function normalizeIncomingNotification(rawNotification) {
+  const objectId = rawNotification?.objectId ?? rawNotification?.object_id ?? ''
+  const riskId =
+    rawNotification?.riskId ??
+    rawNotification?.risk_id ??
+    rawNotification?.risk ??
+    (objectId ? String(objectId) : '')
+
+  return {
+    id: rawNotification?.id,
+    riskId: String(riskId).trim(),
+    title: rawNotification?.title || 'Notification',
+    message: rawNotification?.message || rawNotification?.note || '',
+    at: rawNotification?.createdAt || rawNotification?.created_at || new Date().toISOString(),
+    targetUser: rawNotification?.targetUser,
+    targetUserId: rawNotification?.targetUserId,
+    targetUserName: rawNotification?.targetUserName || rawNotification?.targetUserUsername,
+    targetUsername: rawNotification?.targetUsername,
+    targetName: rawNotification?.targetName,
+    targetEmail: rawNotification?.targetEmail,
+    targetRole: rawNotification?.targetRole,
+    targetDepartment: rawNotification?.targetDepartment,
+    targetKeycloakSubject: rawNotification?.targetKeycloakSubject,
+    targetBackendUserId: rawNotification?.targetBackendUserId,
+    read: false,
+  }
+}
+
+function addRecentId(idRef, id, maxSize) {
+  if (!id) {
+    return false
+  }
+
+  const key = String(id)
+  if (idRef.current.has(key)) {
+    return true
+  }
+
+  idRef.current.add(key)
+  if (idRef.current.size > maxSize) {
+    const oldest = idRef.current.values().next().value
+    if (oldest !== undefined) {
+      idRef.current.delete(oldest)
+    }
+  }
+
+  return false
+}
+
+function mergeNotificationLists(...lists) {
+  const byId = new Map()
+
+  lists.forEach((notificationList) => {
+    notificationList.forEach((notification) => {
+      if (notification?.id) {
+        byId.set(String(notification.id), notification)
+      }
+    })
+  })
+
+  return Array.from(byId.values())
+}
+
+function getSyncStateStorageKey(userId) {
+  return `${STORAGE_KEYS.syncState}:${userId ?? 'guest'}`
+}
+
+function normalizeSyncState(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { ...DEFAULT_SYNC_STATE }
+  }
+
+  const candidate = String(raw.since || '').trim()
+  return {
+    since: candidate || null,
+  }
+}
+
+function getEntityId(value) {
+  const rawId = value?.id ?? value?.riskId
+  if (rawId === null || rawId === undefined || rawId === '') {
+    return null
+  }
+  return String(rawId)
+}
+
+function mergeById(currentItems, incomingItems) {
+  const byId = new Map()
+  const noIdItems = []
+
+  if (Array.isArray(currentItems)) {
+    currentItems.forEach((item) => {
+      const id = getEntityId(item)
+      if (id === null) {
+        return
+      }
+
+      byId.set(id, item)
+    })
+  }
+
+  if (Array.isArray(incomingItems)) {
+    incomingItems.forEach((item) => {
+      const id = getEntityId(item)
+      if (id === null) {
+        noIdItems.push(item)
+        return
+      }
+
+      byId.set(id, item)
+    })
+  }
+
+  return [...byId.values(), ...noIdItems]
+}
+
+function mergeRiskAudits(existingRisk, incomingRisk) {
+  const incomingAudit = incomingRisk?.audit
+  if (!Array.isArray(incomingAudit) || incomingAudit.length === 0) {
+    return Array.isArray(existingRisk?.audit) ? existingRisk.audit : []
+  }
+
+  return sortItemsByDateDesc(
+    mergeById(existingRisk?.audit, incomingAudit),
+    'at',
+  )
+}
+
+function mergeRiskCollections(currentRisks, incomingRisks) {
+  const currentById = new Map()
+  const noIdIncoming = []
+
+  if (Array.isArray(currentRisks)) {
+    currentRisks.forEach((risk) => {
+      const id = getEntityId(risk)
+      if (id !== null) {
+        currentById.set(id, risk)
+      }
+    })
+  }
+
+  if (Array.isArray(incomingRisks)) {
+    incomingRisks.forEach((incomingRisk) => {
+      const id = getEntityId(incomingRisk)
+      if (id === null) {
+        noIdIncoming.push(incomingRisk)
+        return
+      }
+
+      const existingRisk = currentById.get(id)
+      const mergedRisk = {
+        ...(existingRisk || {}),
+        ...(incomingRisk || {}),
+      }
+
+      mergedRisk.audit = mergeRiskAudits(existingRisk, incomingRisk)
+      currentById.set(id, mergedRisk)
+    })
+  }
+
+  return sortItemsByDateDesc(
+    [...currentById.values(), ...noIdIncoming],
+    'updatedAt',
+  )
+}
+
+function mergeDecisionCollections(current, incoming) {
+  return sortItemsByDateDesc(mergeById(current, incoming), 'decidedAt')
+}
+
+function mergeMitigationCollections(current, incoming) {
+  return sortItemsByDateAsc(mergeById(current, incoming), 'createdAt')
+}
+
 export function ErmProvider({ children }) {
   const { currentUser, directoryUsers } = useAuth()
   const [risks, setRisks] = useState([])
@@ -218,18 +489,38 @@ export function ErmProvider({ children }) {
   const [notificationReads, setNotificationReads] = useState(() =>
     loadFromStorage(STORAGE_KEYS.notificationReads, {}),
   )
+  const [realtimeNotifications, setRealtimeNotifications] = useState([])
   const [toasts, setToasts] = useState([])
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isBackendConnected, setIsBackendConnected] = useState(false)
   const [isBackendLoading, setIsBackendLoading] = useState(false)
   const [backendError, setBackendError] = useState('')
+  const previousUserIdRef = useRef(null)
   const syncBatchDepthRef = useRef(0)
   const pendingSyncRef = useRef(false)
   const inflightSyncRef = useRef(null)
   const hasDatasetRef = useRef(false)
+  const activeNotificationSocketRef = useRef(null)
+  const riskActivitySocketsRef = useRef(new Map())
+  const seenActivityIdsRef = useRef(new Set())
+  const seenNotificationIdsRef = useRef(new Set())
+  const syncStateRef = useRef(DEFAULT_SYNC_STATE)
 
   const departments = useMemo(() => departmentItems.map((item) => item.name), [departmentItems])
   const categories = useMemo(() => categoryItems.map((item) => item.name), [categoryItems])
+  const riskByIdMap = useMemo(() => {
+    const next = new Map()
+
+    risks.forEach((risk) => {
+      const riskId = String(risk?.id || '').trim()
+      if (!riskId) {
+        return
+      }
+      next.set(riskId, risk)
+    })
+
+    return next
+  }, [risks])
 
   const addToast = (payload) => {
     const id = `toast-${Date.now()}-${Math.floor(Math.random() * 10000)}`
@@ -250,12 +541,73 @@ export function ErmProvider({ children }) {
     setToasts((current) => current.filter((item) => item.id !== id))
   }
 
-  const applyDataset = (dataset) => {
-    setRisks(dataset.risks)
-    setMitigationActions(dataset.mitigationActions)
-    setDecisionLogs(dataset.decisionLogs)
-    setDepartmentItems(sortReferenceItems(dataset.departmentItems))
-    setCategoryItems(sortReferenceItems(dataset.categoryItems))
+  const applySyncState = useCallback((rawSyncState) => {
+    const nextSyncState = normalizeSyncState(rawSyncState)
+    syncStateRef.current = nextSyncState
+
+    if (currentUser?.id) {
+      saveToStorage(getSyncStateStorageKey(currentUser.id), nextSyncState)
+    }
+  }, [currentUser?.id])
+
+  const clearPersistedBackendState = useCallback((userId) => {
+    if (typeof window === 'undefined' || !userId) {
+      return
+    }
+
+    const keys = [
+      getDatasetCacheStorageKey(userId),
+      getSyncStateStorageKey(userId),
+      getGlobalFiltersStorageKey(userId),
+    ]
+
+    try {
+      keys.forEach((key) => {
+        window.localStorage.removeItem(key)
+      })
+    } catch {
+      // ignore browser storage errors
+    }
+  }, [])
+
+  const restoreSyncState = useCallback((userId) => {
+    if (!userId) {
+      return DEFAULT_SYNC_STATE
+    }
+
+    const storedSyncState = loadFromStorage(getSyncStateStorageKey(userId), DEFAULT_SYNC_STATE)
+    const normalizedSyncState = normalizeSyncState(storedSyncState)
+    syncStateRef.current = normalizedSyncState
+    return normalizedSyncState
+  }, [])
+
+  const applyDataset = useCallback((dataset, { incremental = false } = {}) => {
+    const incomingRisks = Array.isArray(dataset?.risks) ? dataset.risks : []
+    const incomingMitigationActions = Array.isArray(dataset?.mitigationActions)
+      ? dataset.mitigationActions
+      : []
+    const incomingDecisionLogs = Array.isArray(dataset?.decisionLogs)
+      ? dataset.decisionLogs
+      : []
+
+    setRisks((current) => (
+      incremental
+        ? mergeRiskCollections(current, incomingRisks)
+        : sortItemsByDateDesc(incomingRisks, 'updatedAt')
+    ))
+    setMitigationActions((current) => (
+      incremental
+        ? mergeMitigationCollections(current, incomingMitigationActions)
+        : sortItemsByDateAsc(incomingMitigationActions, 'createdAt')
+    ))
+    setDecisionLogs((current) => (
+      incremental
+        ? mergeDecisionCollections(current, incomingDecisionLogs)
+        : sortItemsByDateDesc(incomingDecisionLogs, 'decidedAt')
+    ))
+
+    setDepartmentItems(sortReferenceItems(Array.isArray(dataset?.departmentItems) ? dataset.departmentItems : []))
+    setCategoryItems(sortReferenceItems(Array.isArray(dataset?.categoryItems) ? dataset.categoryItems : []))
     setGlobalFiltersState((current) =>
       normalizeGlobalFilters(current, dataset.departments),
     )
@@ -266,9 +618,15 @@ export function ErmProvider({ children }) {
     if (currentUser?.id) {
       saveToStorage(getDatasetCacheStorageKey(currentUser.id), dataset)
     }
-  }
 
-  const syncFromBackend = async ({ force = false, preserveOnError = false } = {}) => {
+    if (dataset?.sync) {
+      applySyncState({
+        since: dataset.sync.since,
+      })
+    }
+  }, [applySyncState, currentUser?.id])
+
+  const syncFromBackend = useCallback(async ({ force = false, preserveOnError = false } = {}) => {
     if (!force && inflightSyncRef.current) {
       return inflightSyncRef.current
     }
@@ -276,8 +634,12 @@ export function ErmProvider({ children }) {
     const syncPromise = (async () => {
       setIsBackendLoading(true)
       try {
-        const dataset = await loadErmDataset()
-        applyDataset(dataset)
+        const syncMarker = force ? null : syncStateRef.current.since
+        const dataset = await loadErmDataset({
+          incremental: Boolean(syncMarker),
+          since: syncMarker,
+        })
+        applyDataset(dataset, { incremental: Boolean(syncMarker) })
         return dataset
       } catch (error) {
         if (!preserveOnError && !hasDatasetRef.current) {
@@ -299,7 +661,7 @@ export function ErmProvider({ children }) {
         inflightSyncRef.current = null
       }
     }
-  }
+  }, [applyDataset])
 
   const scheduleBackendSync = async ({ force = false } = {}) => {
     if (!force && syncBatchDepthRef.current > 0) {
@@ -321,15 +683,22 @@ export function ErmProvider({ children }) {
 
       if (syncBatchDepthRef.current === 0 && pendingSyncRef.current) {
         pendingSyncRef.current = false
-        await syncFromBackend({ force: true })
+        await syncFromBackend({ force: !syncStateRef.current.since })
       }
     }
   }
 
   useEffect(() => {
     let active = true
+    const nextUserId = currentUser?.id ?? null
+    const isReturningToUser = previousUserIdRef.current !== nextUserId
 
     if (!currentUser?.id) {
+      if (previousUserIdRef.current) {
+        clearPersistedBackendState(previousUserIdRef.current)
+      }
+
+      previousUserIdRef.current = null
       setRisks([])
       setMitigationActions([])
       setDecisionLogs([])
@@ -344,17 +713,26 @@ export function ErmProvider({ children }) {
       }
     }
 
+    if (isReturningToUser) {
+      clearPersistedBackendState(previousUserIdRef.current)
+      previousUserIdRef.current = nextUserId
+    }
+
+    const currentSyncState = restoreSyncState(currentUser.id)
+    const shouldForceSync = !currentSyncState.since
+
     const loadInitialData = async () => {
       const cachedDataset = loadFromStorage(getDatasetCacheStorageKey(currentUser.id), null)
+      const hasCachedDataset = hasDatasetContent(cachedDataset)
 
-      if (active && hasDatasetContent(cachedDataset)) {
+      if (active && hasCachedDataset) {
         applyDataset(cachedDataset)
       }
 
       try {
         await syncFromBackend({
-          force: true,
-          preserveOnError: hasDatasetContent(cachedDataset),
+          force: shouldForceSync,
+          preserveOnError: hasCachedDataset,
         })
         if (!active) {
           return
@@ -383,7 +761,7 @@ export function ErmProvider({ children }) {
     return () => {
       active = false
     }
-  }, [currentUser?.id])
+  }, [applyDataset, clearPersistedBackendState, currentUser?.id, restoreSyncState, syncFromBackend])
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -397,7 +775,7 @@ export function ErmProvider({ children }) {
         departments,
       ),
     )
-  }, [currentUser?.id])
+  }, [currentUser?.id, departments])
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -435,28 +813,212 @@ export function ErmProvider({ children }) {
     setGlobalFiltersState(defaultGlobalFilters)
   }
 
+  const appendRealtimeNotification = (rawNotification) => {
+    if (!rawNotification) {
+      return
+    }
+
+    const normalized = normalizeIncomingNotification(rawNotification)
+    if (!normalized.id) {
+      return
+    }
+
+    const hasExplicitTarget = [
+      normalized.targetUser,
+      normalized.targetUserId,
+      normalized.targetUserName,
+      normalized.targetUsername,
+      normalized.targetEmail,
+      normalized.targetRole,
+      normalized.targetDepartment,
+      normalized.targetKeycloakSubject,
+      normalized.targetBackendUserId,
+      normalized.targetName,
+    ].some((value) => typeof value === 'string' ? value.trim() : value)
+
+    if (hasExplicitTarget && !matchesNotificationTarget(normalized, currentUser)) {
+      return
+    }
+
+    const isDuplicate = addRecentId(
+      seenNotificationIdsRef,
+      normalized.id,
+      MAX_RECENT_NOTIFICATION_IDS,
+    )
+
+    if (isDuplicate) {
+      return
+    }
+
+    const riskRecord = riskByIdMap.get(String(normalized.riskId))
+
+    setRealtimeNotifications((current) => {
+      return [
+        {
+          ...normalized,
+          riskTitle: normalized.riskTitle || riskRecord?.title || '',
+          read: false,
+        },
+        ...current,
+      ].slice(0, MAX_INLINE_REALTIME_NOTIFICATIONS)
+    })
+  }
+
+  const resolveRiskAuditEvent = (riskId, event) => {
+    if (!event) {
+      return null
+    }
+
+    const payload = event?.data ?? event
+    const nextRiskId = String(payload.riskId ?? payload.risk ?? riskId ?? '').trim()
+    const nextType = String(payload.type || event.type || 'update')
+      .trim()
+      .toLowerCase()
+
+    if (!nextRiskId) {
+      return null
+    }
+
+    return {
+      ...payload,
+      riskId: nextRiskId,
+      type: nextType,
+      title: payload.title || 'Risk updated',
+      notes: payload.notes || '',
+      by: payload.by || event.by || currentUser?.name || 'System',
+      at: payload.at || new Date().toISOString(),
+    }
+  }
+
+  const subscribeToRiskActivity = (riskId) => {
+    const riskKey = String(riskId || '').trim()
+    if (!riskKey || !currentUser?.id) {
+      return () => {}
+    }
+
+    const existing = riskActivitySocketsRef.current.get(riskKey)
+    if (existing) {
+      existing.subscribers += 1
+      return () => {
+        const target = riskActivitySocketsRef.current.get(riskKey)
+        if (!target) {
+          return
+        }
+
+        target.subscribers -= 1
+        if (target.subscribers > 0) {
+          return
+        }
+
+        target.connection.stop()
+        riskActivitySocketsRef.current.delete(riskKey)
+      }
+    }
+
+    const connection = createRealtimeSocket(`ws/risk-activity/${riskKey}/`, {
+      onEvent: (payload) => {
+        if (!payload || payload.eventType !== 'risk_activity') {
+          return
+        }
+
+        const resolvedEvent = resolveRiskAuditEvent(riskKey, payload)
+        if (!resolvedEvent) {
+          return
+        }
+
+        appendAuditEntryToRisk(riskKey, resolvedEvent)
+      },
+    })
+
+    const entry = {
+      connection,
+      subscribers: 1,
+    }
+    riskActivitySocketsRef.current.set(riskKey, entry)
+    connection.start()
+
+    return () => {
+      const target = riskActivitySocketsRef.current.get(riskKey)
+      if (!target) {
+        return
+      }
+
+      target.subscribers -= 1
+      if (target.subscribers > 0) {
+        return
+      }
+
+      target.connection.stop()
+      riskActivitySocketsRef.current.delete(riskKey)
+    }
+  }
+
+  const clearRealtimeState = () => {
+    if (activeNotificationSocketRef.current) {
+      activeNotificationSocketRef.current.stop()
+      activeNotificationSocketRef.current = null
+    }
+
+    riskActivitySocketsRef.current.forEach((entry) => {
+      entry.connection.stop()
+    })
+    riskActivitySocketsRef.current.clear()
+
+    setRealtimeNotifications([])
+    seenActivityIdsRef.current.clear()
+    seenNotificationIdsRef.current.clear()
+  }
+
+  useEffect(() => {
+    clearRealtimeState()
+  }, [currentUser?.id])
+
+  useEffect(() => {
+    if (!currentUser?.id || !isBackendConnected) {
+      return
+    }
+
+    const connection = createRealtimeSocket('ws/notifications/', {
+      onEvent: (payload) => {
+        if (!payload || payload.eventType !== 'notification') {
+          return
+        }
+
+        appendRealtimeNotification(payload.data)
+      },
+    })
+
+    activeNotificationSocketRef.current = connection
+    connection.start()
+
+    return () => {
+      clearRealtimeState()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, isBackendConnected])
+
   const appendAuditEntryToRisk = (riskId, event) => {
     if (!riskId || !event) {
       return
     }
 
-    const nextAuditEntry = {
-      id: event.id ?? `local-audit-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      riskId,
-      type: event.type ?? 'update',
-      title: event.title ?? 'Risk updated',
-      notes: event.notes ?? '',
-      by: event.by ?? currentUser?.name ?? 'System',
-      at: event.at ?? new Date().toISOString(),
-      diff: event.diff ?? null,
+    const nextAuditEntry = normalizeIncomingAuditEvent(riskId, event, currentUser)
+    const nextAuditEntryId = nextAuditEntry.id ?? `local-audit-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+    const isDuplicate = addRecentId(seenActivityIdsRef, nextAuditEntryId, MAX_RECENT_ACTIVITY_IDS)
+
+    if (isDuplicate) {
+      return
     }
 
     setRisks((current) =>
       current.map((risk) =>
-        String(risk.id) === String(riskId)
+        String(risk.id) === String(nextAuditEntry.riskId)
           ? {
               ...risk,
-              audit: sortItemsByDateDesc([...(Array.isArray(risk.audit) ? risk.audit : []), nextAuditEntry], 'at'),
+              audit: sortItemsByDateDesc(
+                [...(Array.isArray(risk.audit) ? risk.audit : []), { ...nextAuditEntry, id: nextAuditEntryId }],
+                'at',
+              ),
             }
           : risk,
       ),
@@ -486,27 +1048,29 @@ export function ErmProvider({ children }) {
       lastReviewedAt: newRisk.lastReviewedAt ?? createdAt,
     }
 
-    await createRiskRecord(payload, departmentItems, categoryItems)
-    const synced = await scheduleBackendSync()
-    const createdRisk = findNewestMatchingRisk(synced.risks, payload)
+    const createdRisk = await createRiskRecord(payload, departmentItems, categoryItems)
+    const createdRiskRecord = createdRisk?.id
+      ? createdRisk
+      : null
 
-    if (!createdRisk?.id) {
-      return createdRisk ?? null
+    if (!createdRiskRecord?.id) {
+      const synced = await scheduleBackendSync()
+      return findNewestMatchingRisk(synced?.risks ?? [], payload) ?? null
     }
 
-    await createActivityRecord(createdRisk.id, {
+    await createActivityRecord(createdRiskRecord.id, {
       type: 'create',
       title: 'Risk created',
       notes: `Status set to ${payload.status}`,
-      by: currentUser?.name ?? payload.owner ?? 'System',
+      by: currentUser?.name ?? createdRiskRecord?.owner ?? payload.owner ?? 'System',
       at: createdAt,
       diff: {
         workflowStatus: payload.status,
       },
     })
 
-    const refreshed = await scheduleBackendSync({ force: true })
-    return findNewestMatchingRisk(refreshed.risks, payload) ?? createdRisk
+    const refreshed = await scheduleBackendSync()
+    return findNewestMatchingRisk(refreshed?.risks ?? [], payload)
   }
 
   const updateRisk = async (riskId, updates, auditEvent) => {
@@ -556,11 +1120,15 @@ export function ErmProvider({ children }) {
     }
 
     if (auditEvent) {
-      await createActivityRecord(riskId, {
+      const nextAuditEvent = {
         ...auditEvent,
         by: auditEvent.by ?? currentUser?.name ?? 'System',
-      })
-      appendAuditEntryToRisk(riskId, auditEvent)
+        at: auditEvent.at || new Date().toISOString(),
+      }
+
+      const createdActivity = await createActivityRecord(riskId, nextAuditEvent)
+      const resolvedAuditEvent = resolveRiskAuditEvent(riskId, createdActivity) ?? nextAuditEvent
+      appendAuditEntryToRisk(riskId, resolvedAuditEvent)
     }
 
     return true
@@ -593,11 +1161,9 @@ export function ErmProvider({ children }) {
       at: event.at ?? new Date().toISOString(),
     }
 
-    await createActivityRecord(riskId, {
-      ...nextEvent,
-    })
-
-    appendAuditEntryToRisk(riskId, nextEvent)
+    const createdActivity = await createActivityRecord(riskId, nextEvent)
+    const resolvedActivity = resolveRiskAuditEvent(riskId, createdActivity) ?? nextEvent
+    appendAuditEntryToRisk(riskId, resolvedActivity)
     return true
   }
 
@@ -756,107 +1322,133 @@ export function ErmProvider({ children }) {
     }
 
     const readMap = getNotificationReadMap(notificationReads, currentUser)
-    const explicitNotifications = risks
-      .flatMap((risk) =>
-        (Array.isArray(risk.audit) ? risk.audit : [])
-          .filter((item) => matchesNotificationTarget(item?.diff?.notification, currentUser))
-          .map((item) => {
-            const notification = item?.diff?.notification ?? {}
-            const id = String(notification.id ?? `notification:${item.id}`)
-            return {
-              id,
-              riskId: risk.id,
-              riskTitle: risk.title,
-              at: item.at,
-              title: notification.title ?? item.title ?? 'Notification',
-              message: notification.message ?? item.notes ?? '',
-              read: Boolean(readMap[id]),
-            }
-          }),
-      )
-    const derivedDirectorNotifications =
-      hasAccessRole(currentUser, 'director')
-        ? risks
-            .map((risk) => {
-              if (
-                !risk?.mitigationDepartment ||
-                !sameDepartment(risk.mitigationDepartment, currentUser.department) ||
-                !['Accepted for Mitigation', 'Additional Mitigation Required'].includes(risk.status)
-              ) {
-                return null
-              }
+    const isDirector = hasAccessRole(currentUser, 'director')
+    const canSeeMitigationPrompts = hasAccessRole(currentUser, 'risk') || hasAccessRole(currentUser, 'committee')
+    const normalizedUserDepartment = normalizeDepartmentName(currentUser.department)
+    const activeMitigationStatuses = new Set([
+      'Accepted for Mitigation',
+      'Additional Mitigation Required',
+    ])
+    const riskHasMitigationMap = new Map()
+    const explicitNotificationKeys = new Set()
+    const explicitNotifications = []
+    const directorDerivedNotifications = []
+    const mitigationPromptNotifications = []
 
-              const sourceItem = [...(Array.isArray(risk.audit) ? risk.audit : [])]
-                .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
-                .find(
-                  (item) =>
-                    sameDepartment(item?.diff?.mitigationDepartment, currentUser.department) &&
-                    ['Accepted for Mitigation', 'Additional Mitigation Required'].includes(
-                      item?.diff?.workflowStatus,
-                    ),
-                )
+    for (const action of mitigationActions) {
+      const riskId = String(action?.riskId || '')
+      if (!riskId) {
+        continue
+      }
+      riskHasMitigationMap.set(riskId, (riskHasMitigationMap.get(riskId) || 0) + 1)
+    }
 
-              if (!sourceItem) {
-                return null
-              }
+    for (const risk of risks) {
+      const riskId = String(risk?.id || '')
+      if (!riskId) {
+        continue
+      }
 
-              const hasExplicitNotification = explicitNotifications.some(
-                (item) => String(item.riskId) === String(risk.id) && item.at === sourceItem.at,
-              )
+      const riskTitle = risk.title
+      const riskAudit = Array.isArray(risk.audit) ? risk.audit : []
+      let directorSourceItem = null
 
-              if (hasExplicitNotification) {
-                return null
-              }
+      for (const item of riskAudit) {
+        const notificationDiff = item?.diff?.notification
+        if (notificationDiff && matchesNotificationTarget(notificationDiff, currentUser)) {
+          const notificationId = String(notificationDiff.id ?? `notification:${item.id}`)
+          explicitNotificationKeys.add(`${riskId}|${item?.at || ''}`)
+          explicitNotifications.push({
+            id: notificationId,
+            riskId,
+            riskTitle,
+            at: item.at,
+            title: notificationDiff.title ?? item.title ?? 'Notification',
+            message: notificationDiff.message ?? item.notes ?? '',
+            read: Boolean(readMap[notificationId]),
+          })
+        }
 
-              const id = `derived-notification:${sourceItem.id}`
-              return {
-                id,
-                riskId: risk.id,
-                riskTitle: risk.title,
-                at: sourceItem.at,
-                title: sourceItem.title || 'Risk assigned to your department',
-                message:
-                  sourceItem.notes ||
-                  `${risk.id} was assigned to ${risk.mitigationDepartment} for mitigation handling.`,
-                read: Boolean(readMap[id]),
-              }
-            })
-            .filter(Boolean)
-        : []
+        if (
+          !isDirector ||
+          !activeMitigationStatuses.has(item?.diff?.workflowStatus) ||
+          normalizeDepartmentName(item?.diff?.mitigationDepartment) !== normalizedUserDepartment
+        ) {
+          continue
+        }
 
-    const derivedMitigationPromptNotifications =
-      (hasAccessRole(currentUser, 'risk') || hasAccessRole(currentUser, 'committee'))
-        ? risks
-            .map((risk) => {
-              if (!['Accepted for Mitigation', 'Additional Mitigation Required'].includes(risk.status)) {
-                return null
-              }
+        const candidateAt = new Date(item?.at || 0).getTime()
+        if (Number.isNaN(candidateAt)) {
+          continue
+        }
+        directorSourceItem = item
+        break
+      }
 
-              const relatedActions = mitigationActions.filter(
-                (action) => String(action.riskId) === String(risk.id),
-              )
+      if (
+        isDirector &&
+        activeMitigationStatuses.has(risk.status) &&
+        riskHasMitigationMap.has(riskId) === false &&
+        normalizedUserDepartment &&
+        normalizeDepartmentName(risk.mitigationDepartment) === normalizedUserDepartment &&
+        directorSourceItem
+      ) {
+        const explicitKey = `${riskId}|${directorSourceItem.at || ''}`
+        if (!explicitNotificationKeys.has(explicitKey)) {
+          const derivedNotificationId = `derived-notification:${directorSourceItem.id}`
+          directorDerivedNotifications.push({
+            id: derivedNotificationId,
+            riskId,
+            riskTitle,
+            at: directorSourceItem.at,
+            title: directorSourceItem.title || 'Risk assigned to your department',
+            message:
+              directorSourceItem.notes ||
+              `${risk.id} was assigned to ${risk.mitigationDepartment} for mitigation handling.`,
+            read: Boolean(readMap[derivedNotificationId]),
+          })
+        }
+      }
 
-              if (relatedActions.length) {
-                return null
-              }
+      if (
+        canSeeMitigationPrompts &&
+        activeMitigationStatuses.has(risk.status) &&
+        !riskHasMitigationMap.has(riskId)
+      ) {
+        const derivedNotificationId = `derived-mitigation-plan:${risk.id}:${risk.status}`
+        mitigationPromptNotifications.push({
+          id: derivedNotificationId,
+          riskId,
+          riskTitle,
+          at: risk.lastReviewedAt || risk.updatedAt || risk.createdAt || new Date().toISOString(),
+          title: 'Add mitigation actions',
+          message: `${risk.id} moved to ${risk.status}. Consider adding mitigation actions for this risk.`,
+          read: Boolean(readMap[derivedNotificationId]),
+        })
+      }
+    }
 
-              const id = `derived-mitigation-plan:${risk.id}:${risk.status}`
-              return {
-                id,
-                riskId: risk.id,
-                riskTitle: risk.title,
-                at: risk.lastReviewedAt || risk.updatedAt || risk.createdAt || new Date().toISOString(),
-                title: 'Add mitigation actions',
-                message: `${risk.id} moved to ${risk.status}. Consider adding mitigation actions for this risk.`,
-                read: Boolean(readMap[id]),
-              }
-            })
-            .filter(Boolean)
-        : []
+    const mergedRealtimeNotifications = realtimeNotifications
+      .map((notification) => ({
+        ...notification,
+        riskTitle:
+          notification.riskTitle ||
+          riskByIdMap.get(String(notification.riskId))?.title ||
+          '',
+      }))
 
-    return [...explicitNotifications, ...derivedDirectorNotifications, ...derivedMitigationPromptNotifications]
+    return mergeNotificationLists(
+      explicitNotifications,
+      directorDerivedNotifications,
+      mitigationPromptNotifications,
+      mergedRealtimeNotifications,
+    )
+      .map((notification) => ({
+        ...notification,
+        read: Boolean(readMap[String(notification.id)]),
+      }))
       .sort((left, right) => new Date(right.at || 0).getTime() - new Date(left.at || 0).getTime())
-  }, [currentUser, mitigationActions, notificationReads, risks])
+  }, [currentUser, mitigationActions, notificationReads, realtimeNotifications, risks, riskByIdMap])
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((item) => !item.read).length,
@@ -901,56 +1493,104 @@ export function ErmProvider({ children }) {
     }))
   }
 
-  const value = {
-    currentUser,
-    risks,
-    scopedRisks,
-    filteredRisks,
-    mitigationActions,
-    decisionLogs,
-    globalFilters,
-    theme,
-    toasts,
-    isSidebarOpen,
-    departments,
-    departmentItems,
-    categories,
-    categoryItems,
-    statuses,
-    queueStatuses,
-    users: directoryUsers,
-    isBackendConnected,
-    isBackendLoading,
-    backendError,
-    notifications,
-    unreadNotificationCount,
-    setGlobalFilters,
-    clearGlobalFilters,
-    addRisk,
-    updateRisk,
-    addDecision,
-    addRiskActivity,
-    addMitigationAction,
-    updateMitigationAction,
-    createDepartment,
-    updateDepartment,
-    deleteDepartment,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-    addToast,
-    dismissToast,
-    markNotificationRead,
-    markAllNotificationsRead,
-    runWithDeferredSync,
-    setTheme,
-    setIsSidebarOpen,
-    openSidebar: () => setIsSidebarOpen(true),
-  }
+  const value = useMemo(
+    () => ({
+      currentUser,
+      risks,
+      scopedRisks,
+      filteredRisks,
+      mitigationActions,
+      decisionLogs,
+      globalFilters,
+      theme,
+      toasts,
+      isSidebarOpen,
+      departments,
+      departmentItems,
+      categories,
+      categoryItems,
+      statuses,
+      queueStatuses,
+      users: directoryUsers,
+      isBackendConnected,
+      isBackendLoading,
+      backendError,
+      notifications,
+      unreadNotificationCount,
+      setGlobalFilters,
+      clearGlobalFilters,
+      addRisk,
+      updateRisk,
+      addDecision,
+      addRiskActivity,
+      subscribeToRiskActivity,
+      addMitigationAction,
+      updateMitigationAction,
+      createDepartment,
+      updateDepartment,
+      deleteDepartment,
+      createCategory,
+      updateCategory,
+      deleteCategory,
+      addToast,
+      dismissToast,
+      markNotificationRead,
+      markAllNotificationsRead,
+      runWithDeferredSync,
+      setTheme,
+      setIsSidebarOpen,
+      openSidebar: () => setIsSidebarOpen(true),
+    }),
+    [
+      currentUser,
+      risks,
+      scopedRisks,
+      filteredRisks,
+      mitigationActions,
+      decisionLogs,
+      globalFilters,
+      theme,
+      toasts,
+      isSidebarOpen,
+      departments,
+      departmentItems,
+      categories,
+      categoryItems,
+      directoryUsers,
+      isBackendConnected,
+      isBackendLoading,
+      backendError,
+      notifications,
+      unreadNotificationCount,
+      setGlobalFilters,
+      clearGlobalFilters,
+      addRisk,
+      updateRisk,
+      addDecision,
+      addRiskActivity,
+      subscribeToRiskActivity,
+      addMitigationAction,
+      updateMitigationAction,
+      createDepartment,
+      updateDepartment,
+      deleteDepartment,
+      createCategory,
+      updateCategory,
+      deleteCategory,
+      addToast,
+      dismissToast,
+      markNotificationRead,
+      markAllNotificationsRead,
+      runWithDeferredSync,
+      setTheme,
+      setIsSidebarOpen,
+    ],
+  )
 
   return <ErmContext.Provider value={value}>{children}</ErmContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useErm() {
   const context = useContext(ErmContext)
   if (!context) {

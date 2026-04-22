@@ -21,7 +21,7 @@
 - `/create` — создание риска
 - `/admin` — справочники/структура
 
-### 2.2 Доменные значения (как в `src/data/seed.js`)
+### 2.2 Доменные значения (как в `src/data/seedMeta.js`)
 - Categories: `Operational`, `IT`, `Compliance`, `Fraud`, `Vendor`, `Reputational`
 - Departments: `Treasury`, `Retail Banking`, `Corporate Banking`, `IT & Security`, `Compliance`, `Operations`, `Human Resources`, `Procurement`
 - Statuses:

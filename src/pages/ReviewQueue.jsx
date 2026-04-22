@@ -245,10 +245,10 @@ export default function ReviewQueue() {
       key: 'actions',
       label: t('queue.col.actions'),
       render: (risk) => (
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="flex flex-wrap justify-end gap-1.5 xl:gap-2">
           <button
             type="button"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#BFDCCF] bg-white text-emerald-700 transition-colors hover:bg-emerald-50 dark:border-[#2F4878] dark:bg-[#10203D] dark:text-emerald-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+            className={`inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md border border-[#BFDCCF] bg-white text-emerald-700 transition-colors hover:bg-emerald-50 xl:w-auto xl:px-2.5 xl:justify-start dark:border-[#2F4878] dark:bg-[#10203D] dark:text-emerald-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
             aria-label={t('queue.actions.approve')}
             title={t('queue.actions.approve')}
             disabled={risk.isActionLocked}
@@ -258,10 +258,11 @@ export default function ReviewQueue() {
             }}
           >
             <Check className="h-4 w-4" />
+            <span className="hidden text-xs font-medium xl:inline">{t('queue.actions.approve')}</span>
           </button>
           <button
             type="button"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#E5CF9B] bg-white text-amber-700 transition-colors hover:bg-amber-50 dark:border-[#2F4878] dark:bg-[#10203D] dark:text-amber-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+            className={`inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md border border-[#E5CF9B] bg-white text-amber-700 transition-colors hover:bg-amber-50 xl:w-auto xl:px-2.5 xl:justify-start dark:border-[#2F4878] dark:bg-[#10203D] dark:text-amber-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
             aria-label={t('queue.actions.requestInfo')}
             title={t('queue.actions.requestInfo')}
             disabled={risk.isActionLocked}
@@ -271,10 +272,11 @@ export default function ReviewQueue() {
             }}
           >
             <MessageSquareMore className="h-4 w-4" />
+            <span className="hidden text-xs font-medium xl:inline">{t('queue.actions.requestInfo')}</span>
           </button>
           <button
             type="button"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#E5B7B7] bg-white text-rose-700 transition-colors hover:bg-rose-50 dark:border-[#2F4878] dark:bg-[#10203D] dark:text-rose-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+            className={`inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md border border-[#E5B7B7] bg-white text-rose-700 transition-colors hover:bg-rose-50 xl:w-auto xl:px-2.5 xl:justify-start dark:border-[#2F4878] dark:bg-[#10203D] dark:text-rose-300 dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
             aria-label={t('queue.actions.reject')}
             title={t('queue.actions.reject')}
             disabled={risk.isActionLocked}
@@ -284,11 +286,12 @@ export default function ReviewQueue() {
             }}
           >
             <X className="h-4 w-4" />
+            <span className="hidden text-xs font-medium xl:inline">{t('queue.actions.reject')}</span>
           </button>
           {canAssign ? (
             <button
               type="button"
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#AFC5FF] bg-white text-[#0041B6] transition-colors hover:bg-[#E8EFFF] dark:border-[#2F4878] dark:bg-[#10203D] dark:text-[#BDD2FF] dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+              className={`inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-md border border-[#AFC5FF] bg-white text-[#0041B6] transition-colors hover:bg-[#E8EFFF] xl:w-auto xl:px-2.5 xl:justify-start dark:border-[#2F4878] dark:bg-[#10203D] dark:text-[#BDD2FF] dark:hover:bg-[#1A2F59] ${risk.isActionLocked ? 'cursor-not-allowed opacity-50' : ''}`}
               aria-label={t('queue.actions.assign')}
               title={t('queue.actions.assign')}
               disabled={risk.isActionLocked}
@@ -300,6 +303,7 @@ export default function ReviewQueue() {
               }}
             >
               <UserRoundPlus className="h-4 w-4" />
+              <span className="hidden text-xs font-medium xl:inline">{t('queue.actions.assign')}</span>
             </button>
           ) : null}
           {risk.isActionLocked ? (
@@ -336,11 +340,11 @@ export default function ReviewQueue() {
   const activeModal = modalMeta[actionState.type] || modalMeta.Approve
 
   if (!isBackendConnected && !backendError) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
   }
 
   if (!isBackendConnected && backendError) {
-    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+    return <EmptyState title={t('common.backendUnavailable')} description={backendError || t('common.backendUnavailableDesc')} />
   }
 
   return (

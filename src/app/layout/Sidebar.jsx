@@ -24,7 +24,7 @@ const navItems = [
   { labelKey: 'nav.admin', path: '/admin', icon: Settings2, permission: PERMISSIONS.MANAGE_REFERENCE_DATA },
 ]
 
-function LogoLink({ expanded = false, centered = false, onClick, tabbable = true }) {
+function LogoLink({ expanded = false, centered = false, onClick, tabbable = true, t }) {
   return (
     <Link
       to="/dashboard"
@@ -54,12 +54,12 @@ function LogoLink({ expanded = false, centered = false, onClick, tabbable = true
       {centered ? (
         <div className="min-w-0">
           <p className="mt-3 truncate text-[14px] font-semibold text-[#18386F] dark:text-white">
-            Система контроля рисков
+            {t('nav.portalTitle')}
           </p>
         </div>
       ) : expanded ? (
         <div className="min-w-0">
-          <p className="truncate text-[12px] text-slate-500 dark:text-[#91A9D8]">Корпоративные риски</p>
+          <p className="truncate text-[12px] text-slate-500 dark:text-[#91A9D8]">{t('nav.portalSubtitle')}</p>
         </div>
       ) : null}
     </Link>
@@ -204,7 +204,7 @@ export default function Sidebar() {
           onClick={() => openSidebar()}
         >
           <div className="w-full">
-            <LogoLink />
+            <LogoLink t={t} />
           </div>
 
           <div className="my-5 h-px w-10 bg-[#E3EAF5] dark:bg-[#27406F]" />
@@ -244,7 +244,7 @@ export default function Sidebar() {
             >
               <div className="flex h-full flex-col">
                 <div className="border-b border-[#E3EAF5] pb-5 dark:border-[#27406F]">
-                  <LogoLink expanded centered tabbable={false} onClick={() => setIsSidebarOpen(false)} />
+                  <LogoLink expanded centered tabbable={false} onClick={() => setIsSidebarOpen(false)} t={t} />
                 </div>
 
                 <div className="mt-5 flex-1">

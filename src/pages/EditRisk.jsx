@@ -78,11 +78,11 @@ export default function EditRisk() {
   const isDraftAuthor = Boolean(risk) && risk.status === 'Draft' && matchesRiskCreator(currentUser, risk)
 
   if (!isBackendConnected && !backendError) {
-    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">Loading backend data...</section>
+    return <section className="panel p-4 text-sm text-slate-500 dark:text-slate-400">{t('common.loadingBackendData')}</section>
   }
 
   if (!isBackendConnected && backendError) {
-    return <EmptyState title="Backend unavailable" description={backendError || 'Unable to load data from backend.'} />
+    return <EmptyState title={t('common.backendUnavailable')} description={backendError || t('common.backendUnavailableDesc')} />
   }
 
   if (loadingRisk && !risk) {
